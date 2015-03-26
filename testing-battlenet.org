@@ -1,0 +1,1453 @@
+# (setq org-export-allow-bind-keywords t)
+#+BIND: org-latex-title-command "\\author[Ben Deane]{\\href{mailto:bdeane@blizzard.com}{Ben Deane} \\\\ {\\scriptsize{Principal Engineer, \\href{http://www.blizzard.com/}{Blizzard Entertainment}}} \\\\ {\\footnotesize{\\texttt{\\href{mailto:bdeane@blizzard.com}{bdeane@blizzard.com}, \\href{http://www.twitter.com/ben_deane}{@ben_deane}}}}}\n\\maketitle"
+
+#+TITLE: Testing Battle.net
+#+BEAMER_HEADER: \subtitle{(Before deploying to millions of players)}
+#+DATE: 13th May 2015
+#+AUTHOR: Ben Deane
+
+#+DESCRIPTION: C++-oriented solutions to testing Battle.net before deployment
+#+KEYWORDS: battle.net testing c++
+#+LANGUAGE:  en
+#+OPTIONS:   H:1 num:t toc:nil \n:nil @:t ::t |:t ^:nil -:t f:t *:t <:t author:nil
+#+OPTIONS:   TeX:t LaTeX:t skip:nil d:nil todo:t pri:nil tags:not-in-toc
+#+INFOJS_OPT: view:nil toc:nil ltoc:t mouse:underline buttons:0 path:http://orgmode.org/org-info.js
+#+EXPORT_SELECT_TAGS: export
+#+EXPORT_EXCLUDE_TAGS: noexport
+#+LINK_UP:
+#+LINK_HOME:
+#+XSLT:
+#+LaTeX_CLASS: beamer
+#+COLUMNS: %40ITEM %10BEAMER_env(Env) %9BEAMER_envargs(Env Args) %4BEAMER_col(Col) %10BEAMER_extra(Extra)
+#+LaTeX_HEADER: \usepackage{helvet}
+#+LaTeX_HEADER: \usepackage{color,soul}
+#+LaTeX_HEADER: \usepackage{amsmath, amsthm, amssymb, breqn}
+#+BEAMER_THEME: Madrid
+#+BEAMER_COLOR_THEME: wolverine
+#+STARTUP: beamer
+
+# To generate notes pages only:
+# +LaTeX_CLASS_OPTIONS: [handout]
+# +LaTeX_HEADER: \setbeameroption{show only notes}
+# +LaTeX_HEADER: \usepackage{pgfpages}
+# +LaTeX_HEADER: \pgfpagesuselayout{2 on 1}[letterpaper,portrait,border shrink=5mm]
+
+# For normal presentation output:
+#+LaTeX_CLASS_OPTIONS: [bigger]
+#+LaTeX_HEADER: \setbeamertemplate{navigation symbols}{}%remove navigation symbols
+
+# syntax highlighting colors
+#+LaTeX_HEADER: \definecolor{sh_comment}{RGB}{64,128,128}
+#+LaTeX_HEADER: \definecolor{sh_hilight}{RGB}{255,231,0}
+#+LaTeX_HEADER: \newcommand{\reducedstrut}{\vrule width 0pt height .9\ht\strutbox depth .9\dp\strutbox\relax}
+#+LaTeX_HEADER: \newcommand{\hilight}[1]{\begingroup\setlength{\fboxsep}{0pt}\colorbox{sh_hilight}{\reducedstrut#1\/}\endgroup}
+
+* Battle.net infrastructure
+- About 325,000 lines of C++
+  - Servers + client libraries
+- "Battle.net Game Service"
+  - Authenticate players
+  - Social: friends, presence
+  - Matchmaking (cooperative/competitive)
+  - Achievements/profiles
+
+* Battle.net is highly...
+- Distributed
+- Asynchronous
+- Configured
+- Fault-prone
+- Architecture-varied
+  - inheritance
+  - composition
+  - value-oriented
+
+* Battle.net integration testing
+#+attr_latex: :width \textwidth
+[[./csharp-battlenet.png]]
+- API testing is pretty robust
+  - and certainly valuable
+- But this doesn't help me in the moment
+  - slow to build
+  - slow to run
+  - needs a full environment
+
+* My journey towards effective unit testing
+- No practice at unit testing
+- Large project with many moving parts
+- Mature lower level libraries
+- New code (features) added at an alarming rate
+
+* What's typically well-tested?
+- UTF-8 string conversion
+- String interpolation
+- URL parsing/decomposition
+- Stats/math code
+
+\begin{center}
+\leavevmode\\[1\baselineskip]
+These things are "easy mode" for tests.
+\end{center}
+
+* Not-so-well tested?
+- Filesystem interaction (caching downloaded objects)
+- Matchmaking algorithms
+- Queueing/Load balancing algorithms
+
+\begin{center}
+\leavevmode\\[1\baselineskip]
+These things are harder to test. Where to start?
+\end{center}
+
+* My conclusions
+- We don't do unit testing because we aren't practised at it
+- Because we don't do "TDD", we /can't/ do unit testing
+  - Legacy code is poorly structured
+- We have a test framework
+
+* My goals for "unit" tests
+- Fast
+- No data/process dependencies
+- Automated
+- Binary pass/fail
+- Independent
+- No test-only interface support
+- By me, for me
+
+* No magic bullet
+- I wrote a lock of mocks
+- Set up a lot of data structures for test
+- A lot of testing code to keep bug-free
+- But along the way I found
+  - better code structure
+  - useful techniques
+
+* Enemies of testing
+- Global state
+- Deep inheritance
+- Mixing concerns, coupling
+- I/O
+
+* Enemies of testing
+- Doing work in constructors (cf RAII)
+- Lack of dependency injection
+- Wide interfaces (especially when passed to constructors)
+
+* Exhibit A: hard to test
+
+** block                                                         :B_onlyenv:
+:PROPERTIES:
+:BEAMER_env: onlyenv
+:BEAMER_act: <1>
+:END:
+\begin{scriptsize}
+\texttt{\hilight{class ChannelBase :\ public rpc::Implementor<protocol::channel::Channel>;}\\
+\hilight{class ChannelImpl :\ public ChannelBase;}\\[1\baselineskip]
+\hilight{class PresenceChannelImpl :\ public ChannelImpl}\\
+\string{\\
+public:\\
+\ \ PresenceChannelImpl(\\
+\ \ \ \ Process* process,\\
+\ \ \ \ rpc::RPCDispatcher* insideDispatcher,\\
+\ \ \ \ const EntityId\& entityId,\\
+\ \ \ \ ChannelDelegate* channelDelegate,\\
+\ \ \ \ ChannelOwner* owner,\\
+\ \ \ \ const PresenceFieldConfigMap\& fieldMap);\\
+\string};}
+\end{scriptsize}
+
+** block                                                         :B_onlyenv:
+:PROPERTIES:
+:BEAMER_env: onlyenv
+:BEAMER_act: <2>
+:END:
+\begin{scriptsize}
+\texttt{class ChannelBase :\ public rpc::Implementor<protocol::channel::Channel>;\\
+class ChannelImpl :\ public ChannelBase;\\[1\baselineskip]
+class PresenceChannelImpl :\ public ChannelImpl\\
+\string{\\
+public:\\
+\ \ PresenceChannelImpl(\\
+\ \ \ \ Process* process,\\
+\ \ \ \ \hilight{rpc::RPCDispatcher* insideDispatcher,}\\
+\ \ \ \ const EntityId\& entityId,\\
+\ \ \ \ ChannelDelegate* channelDelegate,\\
+\ \ \ \ ChannelOwner* owner,\\
+\ \ \ \ const PresenceFieldConfigMap\& fieldMap);\\
+\string};}
+\end{scriptsize}
+
+** block                                                         :B_onlyenv:
+:PROPERTIES:
+:BEAMER_env: onlyenv
+:BEAMER_act: <3>
+:END:
+\begin{scriptsize}
+\texttt{class ChannelBase :\ public rpc::Implementor<protocol::channel::Channel>;\\
+class ChannelImpl :\ public ChannelBase;\\[1\baselineskip]
+class PresenceChannelImpl :\ public ChannelImpl\\
+\string{\\
+public:\\
+\ \ PresenceChannelImpl(\\
+\ \ \ \ Process* process,\\
+\ \ \ \ rpc::RPCDispatcher* insideDispatcher,\\
+\ \ \ \ const EntityId\& entityId,\\
+\ \ \ \ \hilight{ChannelDelegate* channelDelegate,}\\
+\ \ \ \ ChannelOwner* owner,\\
+\ \ \ \ \hilight{const PresenceFieldConfigMap\& fieldMap});\\
+\string};}
+\end{scriptsize}
+
+* Exhibit B: hard to test
+
+** block                                                         :B_onlyenv:
+:PROPERTIES:
+:BEAMER_env: onlyenv
+:BEAMER_act: <1>
+:END:
+\begin{scriptsize}
+\texttt{\hilight{class AchievementsServiceImpl}\\
+\ \ \hilight{:\ public bnet::achievements::AchievementsService}\\
+\ \ \hilight{,\ public AchievementsServiceStaticDataLoader}\\
+\string{\\
+public:\\
+\ \ AchievementsServiceImpl(\\
+\ \ \ \ bnet::internal::ServerHelper\& serverHelper,\\
+\ \ \ \ mysql::Databases* mysql);\\
+\string};}
+\end{scriptsize}
+
+** block                                                         :B_onlyenv:
+:PROPERTIES:
+:BEAMER_env: onlyenv
+:BEAMER_act: <2>
+:END:
+\begin{scriptsize}
+\texttt{class AchievementsServiceImpl\\
+\ \ :\ public bnet::achievements::AchievementsService\\
+\ \ ,\ public AchievementsServiceStaticDataLoader\\
+\string{\\
+public:\\
+\ \ AchievementsServiceImpl(\\
+\ \ \ \ \hilight{bnet::internal::ServerHelper\& serverHelper,}\\
+\ \ \ \ \hilight{mysql::Databases* mysql});\\
+\string};}
+\end{scriptsize}
+
+** block                                                         :B_onlyenv:
+:PROPERTIES:
+:BEAMER_env: onlyenv
+:BEAMER_act: <3>
+:END:
+\begin{scriptsize}
+\texttt{class ServerHelper\\
+\string{\\
+public:\\
+\ \ ServerHelper(...); // 12 args!\\[1\baselineskip]
+\ \ rpc::RPCServer* GetInsideRPCServer() const;\\
+\ \ rpc::RPCServer* GetOutsideRPCServer() const;\\
+\ \ ...\\
+\string};\\[2\baselineskip]}
+\end{scriptsize}
+\begin{center}
+In hindsight, this was a mistake
+\end{center}
+
+* Class structure for testing
+** only                                                          :B_onlyenv:
+:PROPERTIES:
+:BEAMER_env: onlyenv
+:BEAMER_act: <1>
+:END:
+- Base class (contains logic)
+- Derived class (contains I/O, config, etc)
+#+begin_center
+[[./diag1.pdf]]
+#+end_center
+
+** only                                                          :B_onlyenv:
+:PROPERTIES:
+:BEAMER_env: onlyenv
+:BEAMER_act: <2>
+:END:
+- Component class (contains logic)
+- Entity/Object class (contains I/O, config, etc)
+#+begin_center
+[[./diag2.pdf]]
+#+end_center
+
+* Example: Queueing for games
+#+begin_center
+[[./diag3.pdf]]
+#+end_center
+
+* Queueing for games
+** block                                                   :B_ignoreheading:
+:PROPERTIES:
+:BEAMER_env: ignoreheading
+:END:
+\begin{center}
+\texttt{GameQueueBase} contains the queueing logic\\[1\baselineskip]
+\hrule
+\end{center}
+
+** GameQueueBase                                                 :B_onlyenv:
+:PROPERTIES:
+:BEAMER_env: onlyenv
+:BEAMER_act: <1>
+:END:
+\begin{scriptsize}
+\texttt{\hilight{class GameQueueBase}\\
+\string{\\
+public:\\
+\ \ GameQueueBase(\\
+\ \ \ \ shared_ptr<ServerPoolInterface> interface,\\
+\ \ \ \ const PopCallback\& popCb,\\
+\ \ \ \ const UpdateCallback\& updateCb,\\
+\ \ \ \ const PollTimerCallback\& pollTimerCb,\\
+\ \ \ \ const NotificationTimerCallback\& notificationTimerCb);\\[1\baselineskip]
+\ \ bool\ \ \ Push(...);\\
+\ \ size_t Pop(...);\\
+\ \ void\ \ \ Remove(...);\\
+\ \ size_t PollQueue(...);\\[1\baselineskip]
+\ \ ...\\
+\string};\\}
+\end{scriptsize}
+
+** GameQueueBase                                                 :B_onlyenv:
+:PROPERTIES:
+:BEAMER_env: onlyenv
+:BEAMER_act: <2>
+:END:
+\begin{scriptsize}
+\texttt{class GameQueueBase\\
+\string{\\
+public:\\
+\ \ \hilight{GameQueueBase(}\\
+\ \ \ \ \hilight{shared_ptr<ServerPoolInterface> interface,}\\
+\ \ \ \ \hilight{const PopCallback\& popCb,}\\
+\ \ \ \ \hilight{const UpdateCallback\& updateCb,}\\
+\ \ \ \ \hilight{const PollTimerCallback\& pollTimerCb,}\\
+\ \ \ \ \hilight{const NotificationTimerCallback\& notificationTimerCb);}\\[1\baselineskip]
+\ \ bool\ \ \ Push(...);\\
+\ \ size_t Pop(...);\\
+\ \ void\ \ \ Remove(...);\\
+\ \ size_t PollQueue(...);\\[1\baselineskip]
+\ \ ...\\
+\string};\\}
+\end{scriptsize}
+
+** GameQueueBase                                                 :B_onlyenv:
+:PROPERTIES:
+:BEAMER_env: onlyenv
+:BEAMER_act: <3>
+:END:
+\begin{scriptsize}
+\texttt{class GameQueueBase\\
+\string{\\
+public:\\
+\ \ GameQueueBase(\\
+\ \ \ \ shared_ptr<ServerPoolInterface> interface,\\
+\ \ \ \ const PopCallback\& popCb,\\
+\ \ \ \ const UpdateCallback\& updateCb,\\
+\ \ \ \ const PollTimerCallback\& pollTimerCb,\\
+\ \ \ \ const NotificationTimerCallback\& notificationTimerCb);\\[1\baselineskip]
+\ \ \hilight{bool\ \ \ Push(...);}\\
+\ \ \hilight{size_t Pop(...);}\\
+\ \ \hilight{void\ \ \ Remove(...);}\\
+\ \ \hilight{size_t PollQueue(...);}\\[1\baselineskip]
+\ \ ...\\
+\string};\\}
+\end{scriptsize}
+
+* Queueing for games
+** only                                                           :B_onlyenv:
+:PROPERTIES:
+:BEAMER_env: onlyenv
+:BEAMER_act: <1>
+:END:
+*** block                                                 :B_ignoreheading:
+:PROPERTIES:
+:BEAMER_env: ignoreheading
+:END:
+\begin{center}
+\texttt{GameQueueImpl} deals with protocols\\[1\baselineskip]
+\hrule
+\end{center}
+
+*** GameQueueImpl                                         :B_ignoreheading:
+:PROPERTIES:
+:BEAMER_env: ignoreheading
+:END:
+\begin{scriptsize}
+\texttt{\hilight{class GameQueueImpl}\\
+\ \ \hilight{:\ public GameQueueBase}\\
+\ \ \hilight{,\ public protocol::game_queue::GameQueue}\\
+\string{\\
+public:\\
+\ \ {\color{sh_comment}\textit{// protocol handler functions}}\\
+\ \ virtual void AddToQueue(...);\\
+\ \ virtual void RemoveFromQueue(...);\\
+\ \ ...\\[1\baselineskip]
+\ \ {\color{sh_comment}\textit{// system events}}\\
+\ \ bool OnInit(...);\\
+\ \ bool OnFlush(...);\\
+\ \ void OnShutdown(...);\\
+\ \ void OnPeerDisconnected(...);\\
+\ \ ...\\
+\string};\\}
+\end{scriptsize}
+
+** only                                                           :B_onlyenv:
+:PROPERTIES:
+:BEAMER_env: onlyenv
+:BEAMER_act: <2>
+:END:
+*** block                                                 :B_ignoreheading:
+:PROPERTIES:
+:BEAMER_env: ignoreheading
+:END:
+\begin{center}
+\texttt{GameQueueImpl} deals with protocols\\[1\baselineskip]
+\hrule
+\end{center}
+
+*** GameQueueImpl                                         :B_ignoreheading:
+:PROPERTIES:
+:BEAMER_env: ignoreheading
+:END:
+\begin{scriptsize}
+\texttt{class GameQueueImpl\\
+\ \ :\ public GameQueueBase\\
+\ \ ,\ public protocol::game_queue::GameQueue\\
+\string{\\
+public:\\
+\ \ {\color{sh_comment}\textit{// protocol handler functions}}\\
+\ \ \hilight{virtual void AddToQueue(...);}\\
+\ \ \hilight{virtual void RemoveFromQueue(...);}\\
+\ \ ...\\[1\baselineskip]
+\ \ {\color{sh_comment}\textit{// system events}}\\
+\ \ bool OnInit(...);\\
+\ \ bool OnFlush(...);\\
+\ \ void OnShutdown(...);\\
+\ \ void OnPeerDisconnected(...);\\
+\ \ ...\\
+\string};\\}
+\end{scriptsize}
+
+** only                                                           :B_onlyenv:
+:PROPERTIES:
+:BEAMER_env: onlyenv
+:BEAMER_act: <3>
+:END:
+*** block                                                 :B_ignoreheading:
+:PROPERTIES:
+:BEAMER_env: ignoreheading
+:END:
+\begin{center}
+\texttt{GameQueueImpl} deals with system events\\[1\baselineskip]
+\hrule
+\end{center}
+
+*** GameQueueImpl                                         :B_ignoreheading:
+:PROPERTIES:
+:BEAMER_env: ignoreheading
+:END:
+\begin{scriptsize}
+\texttt{class GameQueueImpl\\
+\ \ :\ public GameQueueBase\\
+\ \ ,\ public protocol::game_queue::GameQueue\\
+\string{\\
+public:\\
+\ \ {\color{sh_comment}\textit{// protocol handler functions}}\\
+\ \ virtual void AddToQueue(...);\\
+\ \ virtual void RemoveFromQueue(...);\\
+\ \ ...\\[1\baselineskip]
+\ \ {\color{sh_comment}\textit{// system events}}\\
+\ \ \hilight{bool OnInit(...);}\\
+\ \ \hilight{bool OnFlush(...);}\\
+\ \ \hilight{void OnShutdown(...);}\\
+\ \ \hilight{void OnPeerDisconnected(...);}\\
+\ \ ...\\
+\string};\\}
+\end{scriptsize}
+
+** only                                                           :B_onlyenv:
+:PROPERTIES:
+:BEAMER_env: onlyenv
+:BEAMER_act: <4>
+:END:
+*** block                                                   :B_ignoreheading:
+:PROPERTIES:
+:BEAMER_env: ignoreheading
+:END:
+\begin{center}
+\texttt{GameQueueImpl} deals with config\\[1\baselineskip]
+\hrule
+\end{center}
+
+*** GameQueueImpl                                         :B_ignoreheading:
+:PROPERTIES:
+:BEAMER_env: ignoreheading
+:END:
+\begin{scriptsize}
+\texttt{class GameQueueImpl\\
+\ \ :\ public GameQueueBase\\
+\ \ ,\ public protocol::game_queue::GameQueue\\
+\string{\\
+public:\\
+\ \ ...\\[1\baselineskip]
+\ \ {\color{sh_comment}\textit{// setup/config}}\\
+\ \ \hilight{bool ProcessProgramConfig(...);}\\[1\baselineskip]
+\ \ {\color{sh_comment}\textit{// queue polling}}\\
+\ \ void StartPollTimer(...);\\
+\ \ void ServicePollTimer(...);\\
+\ \ void StartNotificationPollTimer(...);\\
+\ \ void ServiceNotificationPollTimer(...);\\
+\ \ ...\\
+\string};\\}
+\end{scriptsize}
+
+** only                                                           :B_onlyenv:
+:PROPERTIES:
+:BEAMER_env: onlyenv
+:BEAMER_act: <5>
+:END:
+*** block                                                   :B_ignoreheading:
+:PROPERTIES:
+:BEAMER_env: ignoreheading
+:END:
+\begin{center}
+\texttt{GameQueueImpl} deals with polling logic\\[1\baselineskip]
+\hrule
+\end{center}
+
+*** GameQueueImpl                                         :B_ignoreheading:
+:PROPERTIES:
+:BEAMER_env: ignoreheading
+:END:
+\begin{scriptsize}
+\texttt{class GameQueueImpl\\
+\ \ :\ public GameQueueBase\\
+\ \ ,\ public protocol::game_queue::GameQueue\\
+\string{\\
+public:\\
+\ \ ...\\[1\baselineskip]
+\ \ {\color{sh_comment}\textit{// setup/config}}\\
+\ \ bool ProcessProgramConfig(...);\\[1\baselineskip]
+\ \ {\color{sh_comment}\textit{// queue polling}}\\
+\ \ \hilight{void StartPollTimer(...);}\\
+\ \ \hilight{void ServicePollTimer(...);}\\
+\ \ \hilight{void StartNotificationPollTimer(...);}\\
+\ \ \hilight{void ServiceNotificationPollTimer(...);}\\
+\ \ ...\\
+\string};\\}
+\end{scriptsize}
+
+* Example: Matchmaking
+#+begin_center
+[[./diag4.pdf]]
+#+end_center
+
+* Matchmaking
+
+** block                                                   :B_ignoreheading:
+:PROPERTIES:
+:BEAMER_env: ignoreheading
+:END:
+\begin{center}
+\texttt{GameFactory} contains matchmaking logic\\[1\baselineskip]
+\hrule
+\end{center}
+
+** GameFactory                                                   :B_onlyenv:
+:PROPERTIES:
+:BEAMER_env: onlyenv
+:BEAMER_act: <1>
+:END:
+\begin{scriptsize}
+\texttt{class GameFactory\\
+\string{\\
+public:\\
+\ \ \hilight{GameFactory(const AttributeValue\& version,}\\
+\ \ \ \ \ \ \ \ \ \ \ \ \ \ \hilight{const ProgramId\& programId,}\\
+\ \ \ \ \ \ \ \ \ \ \ \ \ \ \hilight{GameFactoryId id);}\\[1\baselineskip]
+\ \ virtual bool Configure(const GameFactoryConfig\& config);\\[1\baselineskip]
+\ \ ...\\
+\ \ virtual Error RegisterPlayers(...);\\
+\ \ virtual bool UnregisterPlayers(...);\\
+\ \ virtual Error JoinGame(...);\\
+\ \ ...\\
+\string};\\}
+\end{scriptsize}
+
+** GameFactory                                                   :B_onlyenv:
+:PROPERTIES:
+:BEAMER_env: onlyenv
+:BEAMER_act: <2>
+:END:
+\begin{scriptsize}
+\texttt{class GameFactory\\
+\string{\\
+public:\\
+\ \ GameFactory(const AttributeValue\& version,\\
+\ \ \ \ \ \ \ \ \ \ \ \ \ \ const ProgramId\& programId,\\
+\ \ \ \ \ \ \ \ \ \ \ \ \ \ GameFactoryId id);\\[1\baselineskip]
+\ \ \hilight{virtual bool Configure(const GameFactoryConfig\& config);}\\[1\baselineskip]
+\ \ ...\\
+\ \ virtual Error RegisterPlayers(...);\\
+\ \ virtual bool UnregisterPlayers(...);\\
+\ \ virtual Error JoinGame(...);\\
+\ \ ...\\
+\string};\\}
+\end{scriptsize}
+
+** GameFactory                                                   :B_onlyenv:
+:PROPERTIES:
+:BEAMER_env: onlyenv
+:BEAMER_act: <3>
+:END:
+\begin{scriptsize}
+\texttt{class GameFactory\\
+\string{\\
+public:\\
+\ \ GameFactory(const AttributeValue\& version,\\
+\ \ \ \ \ \ \ \ \ \ \ \ \ \ const ProgramId\& programId,\\
+\ \ \ \ \ \ \ \ \ \ \ \ \ \ GameFactoryId id);\\[1\baselineskip]
+\ \ virtual bool Configure(const GameFactoryConfig\& config);\\[1\baselineskip]
+\ \ ...\\
+\ \ \hilight{virtual Error RegisterPlayers(...);}\\
+\ \ \hilight{virtual bool UnregisterPlayers(...);}\\
+\ \ \hilight{virtual Error JoinGame(...);}\\
+\ \ ...\\
+\string};\\}
+\end{scriptsize}
+
+* Matchmaking
+** block                                                   :B_ignoreheading:
+:PROPERTIES:
+:BEAMER_env: ignoreheading
+:END:
+\begin{center}
+\texttt{GameMasterImpl} deals with interactions\\[1\baselineskip]
+\hrule
+\end{center}
+
+** GameMasterImpl                                                :B_onlyenv:
+:PROPERTIES:
+:BEAMER_env: onlyenv
+:BEAMER_act: <1>
+:END:
+\begin{scriptsize}
+\texttt{class GameMasterImpl\\
+\ \ :\ public protocol::game_master::GameMaster\\
+\string{\\
+public:\\
+\ \ ...\\
+\ \ \hilight{void OnPeerDisconnected(...);}\\
+\ \ ...\\
+\ \ void InstantiateFactories(...);\\
+\ \ ...\\
+\ \ virtual void ListFactories(...);\\
+\ \ virtual void JoinGame(...);\\
+\ \ virtual void FindGame(...);\\
+\ \ virtual void GameEnded(...);\\
+\ \ virtual void PlayerLeft(...);\\
+\ \ ...\\
+\string};\\}
+\end{scriptsize}
+
+** GameMasterImpl                                                :B_onlyenv:
+:PROPERTIES:
+:BEAMER_env: onlyenv
+:BEAMER_act: <2>
+:END:
+\begin{scriptsize}
+\texttt{class GameMasterImpl\\
+\ \ :\ public protocol::game_master::GameMaster\\
+\string{\\
+public:\\
+\ \ ...\\
+\ \ void OnPeerDisconnected(...);\\
+\ \ ...\\
+\ \ \hilight{void InstantiateFactories(...);}\\
+\ \ ...\\
+\ \ virtual void ListFactories(...);\\
+\ \ virtual void JoinGame(...);\\
+\ \ virtual void FindGame(...);\\
+\ \ virtual void GameEnded(...);\\
+\ \ virtual void PlayerLeft(...);\\
+\ \ ...\\
+\string};\\}
+\end{scriptsize}
+
+** GameMasterImpl                                                :B_onlyenv:
+:PROPERTIES:
+:BEAMER_env: onlyenv
+:BEAMER_act: <3>
+:END:
+\begin{scriptsize}
+\texttt{class GameMasterImpl\\
+\ \ :\ public protocol::game_master::GameMaster\\
+\string{\\
+public:\\
+\ \ ...\\
+\ \ void OnPeerDisconnected(...);\\
+\ \ ...\\
+\ \ void InstantiateFactories(...);\\
+\ \ ...\\
+\ \ \hilight{virtual void ListFactories(...);}\\
+\ \ \hilight{virtual void JoinGame(...);}\\
+\ \ \hilight{virtual void FindGame(...);}\\
+\ \ \hilight{virtual void GameEnded(...);}\\
+\ \ \hilight{virtual void PlayerLeft(...);}\\
+\ \ ...\\
+\string};\\}
+\end{scriptsize}
+
+* A successful pattern
+- Decouple logic from other concerns
+  - Dependency injection for config etc
+  - Makes the logic testable
+- This can be fairly easily applied even to monolithic classes
+  - Just apply the inheritance pattern
+  - Some testing beats no testing
+
+* Goals for testable classes
+\begin{center}
+Dependency injection is probably the biggest factor affecting whether or not code \emph{is testable at all}.\\[2\baselineskip]
+Even with DI, classes are \emph{onerous to test} unless constructors take few arguments, using narrow interfaces.
+\end{center}
+
+* Testing Performance/Efficiency
+- Different solutions for
+  - thousands (performance)
+  - millions (performance + algorithms)
+  - billions (algorithms by construction)
+- Battle.net's working sets are in the millions
+
+* Problems in million-land
+- Computations can run on a single machine
+- Data structures are important to performance
+  - Caching concerns, optimizations can get you 100x
+  - But they can't get you 100,000x
+- Algorithms are important to efficiency
+
+* Testing for performance
+- Timed tests are easy, not so useful
+- My machine is a Windows desktop
+- Production machine is a CentOS blade
+- Timed tests
+  - compare times when optimizing
+  - can't tell me if code is fast enough in an absolute sense
+
+* Efficiency: easy to lose
+- Team of engineers hacking away on features
+- \(\mathnormal{O(log\, n)}\) or less is required
+- Easy to accidentally turn it into \(\mathnormal{O(n)}\) (or worse)
+- I need a way to test for algorithmic efficiency
+
+* Testing for efficiency
+- A simple idea
+- Run the same test with different sized inputs
+- Compute ratio of times
+
+#+BEGIN_LaTeX
+\begin{align*}
+\mathnormal{T_1} = & (time\, for\, run\, on\, data\, of\, size\: \mathnormal{N}) \\
+\mathnormal{T_2} = & (time\, for\, run\, on\, data\, of\, size\: \mathnormal{kN})
+\end{align*}
+#+END_LaTeX
+
+* Bucketing
+#+BEGIN_LaTeX
+\begin{align*}
+\mathnormal{O(1) \Rightarrow} & \mathnormal{\frac{T_2}{T_1} = 1} \\[0.5em]
+\mathnormal{O(log\, n) \Rightarrow} & \mathnormal{\frac{T_2}{T_1} = 1 + \frac{log(k)}{log(N)}} \\[0.5em]
+\mathnormal{O(n) \Rightarrow} & \mathnormal{\frac{T_2}{T_1} = k} \\[0.5em]
+\mathnormal{O(n\, log\, n) \Rightarrow} & \mathnormal{\frac{T_2}{T_1} = k\, (1 + \frac{log(k)}{log(N)})} \\[0.5em]
+\mathnormal{O(n^2) \Rightarrow} & \mathnormal{\frac{T_2}{T_1} = k^2}
+\end{align*}
+#+END_LaTeX
+
+* This sounds easy, but...
+- Timing is hard
+  - sensitive to machine load
+  - sensitive to caching effects (CPU/OS)
+  - sensitive to timing function: granularity/perf
+- Statistical mitigation
+- Somewhat careful choice of \(\mathnormal{k}\), \(\mathnormal{N}\)
+  - I settled on 32 for each (\(\mathnormal{N = 32, kN = 1024}\))
+
+* OK, but...
+
+** block                                                   :B_ignoreheading:
+:PROPERTIES:
+:BEAMER_env: ignoreheading
+:END:
+\begin{center}
+Where do you get different-sized inputs?\\
+You can let the test make them...\\[1\baselineskip]
+\hrule
+\end{center}
+
+** Let the test make them                                        :B_onlyenv:
+:PROPERTIES:
+:BEAMER_env: onlyenv
+:BEAMER_act: <1>
+:END:
+\begin{scriptsize}
+\texttt{const int MULT = 32;\\
+const int N = 32;\\
+...\\
+{\color{sh_comment}\textit{// run 1 - with size N}}\\
+\hilight{auto sampleTime1 = test->Run(N);}\\
+test->Teardown();\\[1\baselineskip]
+test->Setup();\\
+{\color{sh_comment}\textit{// run 2 - with size kN}}\\
+auto sampleTime2 = test->Run(N * MULT);\\
+...\\}
+\end{scriptsize}
+
+** Let the test make them                                        :B_onlyenv:
+:PROPERTIES:
+:BEAMER_env: onlyenv
+:BEAMER_act: <2>
+:END:
+\begin{scriptsize}
+\texttt{const int MULT = 32;\\
+const int N = 32;\\
+...\\
+{\color{sh_comment}\textit{// run 1 - with size N}}\\
+auto sampleTime1 = test->Run(N);\\
+test->Teardown();\\[1\baselineskip]
+test->Setup();\\
+{\color{sh_comment}\textit{// run 2 - with size kN}}\\
+\hilight{auto sampleTime2 = test->Run(N * MULT);}\\
+...\\}
+\end{scriptsize}
+
+* Let the test make them?
+- Affects the timing if done naively (i.e. wrongly)
+  - Adds an \(\mathnormal{O(n)}\) component to the test
+  - So move the timing code inside the test also
+- Boilerplate in test code
+- It's not ideal...
+
+* Let the test make them?
+Result: a typical test
+- ~20 lines setup
+- ~20 lines size-related setup
+- ~10 lines timing
+- ~5 lines actual logic
+- ~5 lines test macros
+Yuck.
+
+* Let the test make them?
+- It works well enough to give me confidence
+  - Matchmaking won't blow up with a million players
+- So I lived with this for a while...
+- But I'm lazy, I don't want to maintain all this code
+- And I'm a student of Haskell...
+
+* Wish-driven development
+\begin{center}
+What I have\\[1\baselineskip]
+\hrule
+\end{center}
+
+\begin{scriptsize}
+\texttt{DEF_TEST(TestName, Suite)\\
+\string{\\
+\ \ ...\\
+\ \ return test_result;\\
+\string}}
+\end{scriptsize}
+
+\begin{center}
+What I want\\[1\baselineskip]
+\hrule
+\end{center}
+
+\begin{scriptsize}
+\texttt{DEF_PROPERTY(TestName, Suite, \hilight{const string\& s})\\
+\string{\\
+\ \ {\color{sh_comment}\textit{// do something with s\\
+\ \ // that should be true for any input}}\\
+\ \ ...\\
+\ \ return property_holds;\\
+\string}\\[1\baselineskip]}
+\end{scriptsize}
+
+* A short demo
+\begin{center}
+(Demo)
+\end{center}
+
+* Test macros expand into functions
+\begin{center}
+Macro...\\[1\baselineskip]
+\hrule
+\end{center}
+
+\begin{scriptsize}
+\texttt{DEF_PROPERTY(TestName, Suite, const string\& s)\\
+\string{\\
+\ \ ...\\
+\string}}
+\end{scriptsize}
+
+\begin{center}
+Expands to...\\[1\baselineskip]
+\hrule
+\end{center}
+
+\begin{scriptsize}
+\texttt{struct NonceStruct\\
+\string{\\
+\ \ ...\\
+\ \ bool operator()(const string\&);\\
+\string};\\
+bool NonceStruct::operator()(const string\& s)\\
+\string{\\
+\ \ ...\\
+\string}\\[1\baselineskip]}
+\end{scriptsize}
+
+* Discover the type of the function argument
+\begin{center}
+Simple \texttt{function_traits} template\\[1\baselineskip]
+\hrule
+\end{center}
+
+** only                                                          :B_onlyenv:
+:PROPERTIES:
+:BEAMER_env: onlyenv
+:BEAMER_act: <1>
+:END:
+\begin{scriptsize}
+\texttt{template <typename T>\\
+struct function_traits\\
+\ \ :\ public function_traits<\hilight{decltype(\&T::operator())}>\\
+\string{\string};\\[1\baselineskip]
+template <typename R, typename A>\\
+struct function_traits<R(A)>\\
+\string{\\
+\ \ using argType = A;\\
+\string};\\[1\baselineskip]
+template <typename C, typename R, typename A>\\
+struct function_traits<R(C::*)(A)>\\
+\ \ :\ public function_traits<R(A)>\\
+\string{\string};\\[1\baselineskip]
+...\\[1\baselineskip]}
+\end{scriptsize}
+
+** only                                                          :B_onlyenv:
+:PROPERTIES:
+:BEAMER_env: onlyenv
+:BEAMER_act: <2>
+:END:
+\begin{scriptsize}
+\texttt{template <typename T>\\
+struct function_traits\\
+\ \ :\ public function_traits<decltype(\&T::operator())>\\
+\string{\string};\\[1\baselineskip]
+template <typename R, typename A>\\
+struct function_traits<R(A)>\\
+\string{\\
+\ \ using argType = A;\\
+\string};\\[1\baselineskip]
+template <typename C, typename R, typename A>\\
+struct function_traits<\hilight{R(C::*)(A)}>\\
+\ \ :\ public function_traits<R(A)>\\
+\string{\string};\\[1\baselineskip]
+...\\[1\baselineskip]}
+\end{scriptsize}
+
+** only                                                          :B_onlyenv:
+:PROPERTIES:
+:BEAMER_env: onlyenv
+:BEAMER_act: <3>
+:END:
+\begin{scriptsize}
+\texttt{template <typename T>\\
+struct function_traits\\
+\ \ :\ public function_traits<decltype(\&T::operator())>\\
+\string{\string};\\[1\baselineskip]
+template <typename R, typename A>\\
+struct function_traits<R(A)>\\
+\string{\\
+\ \ \hilight{using argType = A;}\\
+\string};\\[1\baselineskip]
+template <typename C, typename R, typename A>\\
+struct function_traits<R(C::*)(A)>\\
+\ \ :\ public function_traits<R(A)>\\
+\string{\string};\\[1\baselineskip]
+...\\[1\baselineskip]}
+\end{scriptsize}
+
+* Implement a \texttt{Run} function
+\begin{center}
+\texttt{Run()} for a property test\\[1\baselineskip]
+\hrule
+\end{center}
+
+\begin{scriptsize}
+\texttt{{\color{sh_comment}\textit{// DEF_PROPERTY(TestName, Suite, TYPE) becomes...}}\\
+struct NonceStruct :\ public Test\\
+\string{\\
+\ \ ...\\
+\ \ virtual bool Run() override\\
+\ \ \string{\\
+\ \ \ \ {\color{sh_comment}\textit{// Property will type-erase NonceStruct, discover its argument type}}\\
+\ \ \ \ Property p(*this);\\
+\ \ \ \ {\color{sh_comment}\textit{// check() generates arguments to call NonceStruct(TYPE)}}\\
+\ \ \ \ return p.check();\\
+\ \ \string}\\
+\ \ ...\\
+\string};\\[1\baselineskip]}
+\end{scriptsize}
+
+* \texttt{Property} type-erases \texttt{NonceStruct}
+\begin{center}
+Inside \texttt{Property}\\[1\baselineskip]
+\hrule
+\end{center}
+
+** only                                                          :B_onlyenv:
+:PROPERTIES:
+:BEAMER_env: onlyenv
+:BEAMER_act: <1>
+:END:
+\begin{scriptsize}
+\texttt{template <typename T>\\
+struct Internal :\ public InternalBase\\
+\string{\\
+\ \ ...\\[1\baselineskip]
+\ \ \hilight{using paramType = std::decay_t<typename function_traits<T>::argType>;}\\[1\baselineskip]
+\ \ virtual bool check()\\
+\ \ \string{\\
+\ \ \ \ ...\\
+\ \ \ \ {\color{sh_comment}\textit{// generate a value of the right type}}\\
+\ \ \ \ \hilight{paramType p = Arbitrary<paramType>::generate(...);}\\
+\ \ \ \ {\color{sh_comment}\textit{// feed it to the struct's operator()}}\\
+\ \ \ \ return m_t(p);\\
+\ \ \string}\\[1\baselineskip]
+\ \ T m_t;\\
+\string};\\[1\baselineskip]}
+\end{scriptsize}
+
+** only                                                          :B_onlyenv:
+:PROPERTIES:
+:BEAMER_env: onlyenv
+:BEAMER_act: <2>
+:END:
+\begin{scriptsize}
+\texttt{template <typename T>\\
+struct Internal :\ public InternalBase\\
+\string{\\
+\ \ ...\\[1\baselineskip]
+\ \ using paramType = std::decay_t<typename function_traits<T>::argType>;\\[1\baselineskip]
+\ \ virtual bool check()\\
+\ \ \string{\\
+\ \ \ \ ...\\
+\ \ \ \ {\color{sh_comment}\textit{// generate a value of the right type}}\\
+\ \ \ \ paramType p = Arbitrary<paramType>::generate(...);\\
+\ \ \ \ {\color{sh_comment}\textit{// feed it to the struct's operator()}}\\
+\ \ \ \ \hilight{return m_t(p);}\\
+\ \ \string}\\[1\baselineskip]
+\ \ \hilight{T m_t;}\\
+\string};\\[1\baselineskip]}
+\end{scriptsize}
+
+* How to generate \texttt{TYPE}?
+\begin{center}
+Use a template, naturally\\[1\baselineskip]
+\hrule
+\end{center}
+
+\begin{scriptsize}
+\texttt{template <typename T>\\
+struct Arbitrary\\
+\string{\\
+\ \ static T generate(size_t {\color{sh_comment}\textit{/*generation*/}}, unsigned long int {\color{sh_comment}\textit{/*seed*/}})\\
+\ \ \string{\\
+\ \ \ \ return T();\\
+\ \ \string}\\
+\string};\\[1\baselineskip]}
+\end{scriptsize}
+
+\begin{center}
+\hrule\leavevmode\\[1\baselineskip]
+And specialize...
+\end{center}
+
+* Specializing \texttt{Arbitrary<T>}
+- Easy to write \texttt{Arbitrary<T>} for fundamental types
+- Front-load likely edge cases
+  - \texttt{0}
+  - \texttt{numeric_limits<T>::min()}
+  - \texttt{numeric_limits<T>::max()}
+- Otherwise use uniform distribution over range
+
+* Specializing \texttt{Arbitrary<T>}
+\begin{center}
+For \texttt{int}-like types\\[1\baselineskip]
+\hrule
+\end{center}
+
+** only                                                          :B_onlyenv:
+:PROPERTIES:
+:BEAMER_env: onlyenv
+:BEAMER_act: <1>
+:END:
+\begin{scriptsize}
+\texttt{static int generate(size_t g, unsigned long int seed)\\
+\string{\\
+\ \ switch (g)\\
+\ \ \string{\\
+\ \ \ \ case 0:\ \hilight{return 0;}\\
+\ \ \ \ case 1:\ \hilight{return std::numeric_limits<T>::min();}\\
+\ \ \ \ case 2:\ \hilight{return std::numeric_limits<T>::max();}\\
+\ \ \ \ default:\\
+\ \ \ \ \string{\\
+\ \ \ \ \ \ std::mt19937 gen(seed);\\
+\ \ \ \ \ \ std::uniform_int_distribution<T> dis(\\
+\ \ \ \ \ \ \ \ std::numeric_limits<T>::min(), std::numeric_limits<T>::max());\\
+\ \ \ \ \ \ return dis(gen);\\
+\ \ \ \ \string}\\
+\ \ \string}\\
+\string}\\[1\baselineskip]}
+\end{scriptsize}
+
+** only                                                          :B_onlyenv:
+:PROPERTIES:
+:BEAMER_env: onlyenv
+:BEAMER_act: <2>
+:END:
+\begin{scriptsize}
+\texttt{static int generate(size_t g, unsigned long int seed)\\
+\string{\\
+\ \ switch (g)\\
+\ \ \string{\\
+\ \ \ \ case 0:\ return 0;\\
+\ \ \ \ case 1:\ return std::numeric_limits<T>::min();\\
+\ \ \ \ case 2:\ return std::numeric_limits<T>::max();\\
+\ \ \ \ default:\\
+\ \ \ \ \string{\\
+\ \ \ \ \ \ \hilight{std::mt19937 gen(seed);}\\
+\ \ \ \ \ \ \hilight{std::uniform_int_distribution<T> dis(}\\
+\ \ \ \ \ \ \ \ \hilight{std::numeric_limits<T>::min(), std::numeric_limits<T>::max());}\\
+\ \ \ \ \ \ \hilight{return dis(gen);}\\
+\ \ \ \ \string}\\
+\ \ \string}\\
+\string}\\[1\baselineskip]}
+\end{scriptsize}
+
+* Specializing \texttt{Arbitrary<T>}
+- Once we have \texttt{Arbitrary<T>} for fundamental types...
+- Easy to write for compound types
+  - \texttt{vector<T>} etc
+  - \texttt{generate} works in terms of \texttt{generate} on the contained type
+  - the power of ADTs!
+
+* Specializing \texttt{Arbitrary<T>}
+\begin{center}
+For compound types (eg \texttt{vector})\\[1\baselineskip]
+\hrule
+\end{center}
+
+\begin{scriptsize}
+\texttt{static vector<T> generate(size_t g, unsigned long int seed)\\
+\string{\\
+\ \ vector<T> v;\\
+\ \ size_t n = 10 * ((g / 100) + 1);\\
+\ \ v.reserve(n);\\
+\ \ std::generate_n(\\
+\ \ \ \ std::back_inserter(v), n, [\&] () \string{\\
+\ \ \ \ \ \ \hilight{return Arbitrary<T>::generate(g++, seed++);} \string});\\
+\ \ return v;\\
+\string}\\[1\baselineskip]}
+\end{scriptsize}
+
+* Now we have property tests
+- Macro expands \texttt{NonceStruct} with \texttt{operator()}
+- \texttt{Property} type-erases \texttt{NonceStruct}
+- \texttt{Property::Check} does:
+  - \texttt{function_traits} discovery of the argument type \texttt{T}
+  - \texttt{Arbitrary<T>::generate} to make a \texttt{T}
+  - Call \texttt{NonceStruct::operator()}
+- And plumb through parameters like number of checks, random seed
+
+* Better checks for compound types
+\begin{center}
+When a check fails, find a minimal failure case\\[1\baselineskip]
+\hrule
+\end{center}
+
+\begin{scriptsize}
+\texttt{template <typename T>\\
+struct Arbitrary\\
+\string{\\
+\ \ static std::vector<T> shrink(const T\& /*t*/)\\
+\ \ \string{\\
+\ \ \ \ return std::vector<T>();\\
+\ \ \string}\\
+\string};\\[1\baselineskip]}
+\end{scriptsize}
+
+\begin{center}
+\hrule\leavevmode\\[1\baselineskip]
+\texttt{shrink} returns a \texttt{vector} of "reduced" \texttt{T}'s
+\end{center}
+
+* Better checks for compound types
+\begin{center}
+A simple binary search\\[1\baselineskip]
+\hrule
+\end{center}
+
+\begin{scriptsize}
+\texttt{static std::vector<std::basic_string<T>{}> shrink(\\
+\ \ const std::basic_string<T>\& t)\\
+\string{\\
+\ \ std::vector<std::basic_string<T>{}> v;\\
+\ \ if (t.size() < 2)\\
+\ \ \ \ return v;\\
+\ \ auto l = t.size() / 2;\\
+\ \ v.push_back(t.substr(0, l));\\
+\ \ v.push_back(t.substr(l));\\
+\ \ return v;\\
+\string}\\[1\baselineskip]}
+\end{scriptsize}
+
+\begin{center}
+\hrule\leavevmode\\[1\baselineskip]
+Call \texttt{shrink} repeatedly to find a minimal fail case
+\end{center}
+
+* Testing for efficiency (again)
+\begin{center}
+Now the computer can generate \(\mathnormal{N}\), \(\mathnormal{kN}\) values\\[1\baselineskip]
+\hrule
+\end{center}
+
+** \texttt{Arbitrary<T>::generate()}                             :B_onlyenv:
+:PROPERTIES:
+:BEAMER_env: onlyenv
+:BEAMER_act: <1>
+:END:
+\begin{scriptsize}
+\texttt{static vector<T> generate(size_t g, unsigned long int seed)\\
+\string{\\
+\ \ vector<T> v;\\
+\ \ size_t n = 10 * ((g / 100) + 1);\\
+\ \ v.reserve(n);\\
+\ \ std::generate_n(\\
+\ \ \ \ std::back_inserter(v), n, [\&] () \string{\\
+\ \ \ \ \ \ return \hilight{Arbitrary<T>::generate}(g++, seed++); \string});\\
+\ \ return v;\\
+\string}\\[1\baselineskip]}
+\end{scriptsize}
+
+
+** \texttt{Arbitrary<T>::generate_n()}                           :B_onlyenv:
+:PROPERTIES:
+:BEAMER_env: onlyenv
+:BEAMER_act: <2>
+:END:
+\begin{scriptsize}
+\texttt{static vector<T> generate_n(size_t g, unsigned long int seed)\\
+\string{\\
+\ \ vector<T> v;\\
+\ \ {\color{sh_comment}\textit{// use g directly instead of a "loose" value}}\\
+\ \ v.reserve(g);\\
+\ \ std::generate_n(\\
+\ \ \ \ std::back_inserter(v), g, [\&] () \string{\\
+\ \ \ \ \ \ return \hilight{Arbitrary<T>::generate_n}(g, seed++); \string});\\
+\ \ return v;\\
+\string}\\[1\baselineskip]}
+\end{scriptsize}
+
+** block                                                   :B_ignoreheading:
+:PROPERTIES:
+:BEAMER_env: ignoreheading
+:END:
+\begin{center}
+\hrule\leavevmode\\[1\baselineskip]
+Add \texttt{generate_n} as a tighter form of \texttt{generate}
+\end{center}
+
+* Now I can write
+\begin{center}
+A sample complexity test\\[1\baselineskip]
+\hrule
+\end{center}
+
+\begin{scriptsize}
+\texttt{DEF_COMPLEXITY_PROPERTY(TestName, Suite, ORDER_N, const string\& s)\\
+\string{\\
+\ \ {\color{sh_comment}\textit{// something that's supposed to be order N...}}\\
+\ \ std::max_element(s.begin(), s.end());\\
+\string}\\[1\baselineskip]}
+\end{scriptsize}
+
+\begin{center}
+\hrule\leavevmode\\[1\baselineskip]
+And specialize \texttt{Arbitrary} for my own types as necessary\\
+Much less boilerplate to maintain
+\end{center}
+
+* Demo #2
+\begin{center}
+(Demo)
+\end{center}
+
+* So that's where I am now
+- Dependency injection (little work in constructors)
+- Separate logic from interaction (even in monolithic classes)
+- Regular tests for "normal, identified" cases
+- Timed tests when I'm optimizing
+- Property-based tests for invariants
+- Algorithmic complexity tests for scalability confidence
+
+* The future?
+- \texttt{Arbitrary} opens the door for fuzz testing?
+- Alternative walk strategies through the input space
+  - Hilbert?
+  - Morton
+  - etc
+- I'm still lazy; the computer isn't doing enough for me yet
+
+* Battle.net is still highly...
+- Distributed
+- Asynchronous
+- Configured
+- Fault-prone
+- Architecture-varied
+
+\begin{center}
+But more parts of it are well-tested before they leave a developer's machine.\\[1\baselineskip]
+And I'm more confident changing code with a guarantee that correctness/efficiency/scalability won't be affected.
+\end{center}
+
+* Thanks for listening
+\begin{center}
+Code: \texttt{https://github.com/elbeno/testinator}\\[2\baselineskip]
+Me: \texttt{\href{mailto:bdeane@blizzard.com}{bdeane@blizzard.com}, \href{http://www.twitter.com/ben_deane}{@ben_deane}}
+\end{center}
+
+* Notes                                                              :B_note:
+:PROPERTIES:
+:BEAMER_env: note
+:END:
+
+- Introductory (short)
+- Brief overview of Battle.net server topology
+- The problem: moving beyond "easy-mode" unit testing of base libraries to testing real components with real interactions, IO, configuration, etc
+
+- Designing for testability
+- Separating and injecting dependencies
+- Test-friendly class hierarchy design
+- Identifying invariants, structuring logic for tests
+
+- Testing strategies (and the C++ that powers them)
+- Regular edge cases
+- Planning for and testing failure in a distributed system
+- Gaining confidence in scalability without incurring the cost of running a full environment*
+- Property-based testing*
+
+> ----------- REVIEW -----------
+> I'm alway trying to increase the testing-related content at C++Now.
+>
+> In my opinion, C++ programmers don't talk and think enough about
+> testing and don't design for testability. It think that younger
+> languages were created after the TDD revolution and TDD is embedded in
+> their culture. This is not true for C++, so we have to play catchup.
+> Sessions like the one that Ben has submitted are step in that direction.
+>
+> Ben's project was designed with testability in mind and was also one
+> with a particular testing challenge (testing at the required scale
+> isn't really possible). The lessons learned from this project will be
+> valuable to C++ developers.
+>
+>
+> ----------------------- REVIEW 2 ---------------------
+> PAPER: 3
+> TITLE: Testing Battle.net (before deploying to millions of players)
+> AUTHORS: Ben Deane
+>
+> OVERALL EVALUATION: 3 (strong accept)
+> REVIEWER'S CONFIDENCE: 4 (high)
+>
+> ----------- REVIEW -----------
+> Let's not waste time on commenting a keynote-quality submission.
+>
+>
+> ----------------------- REVIEW 3 ---------------------
+> PAPER: 3
+> TITLE: Testing Battle.net (before deploying to millions of players)
+> AUTHORS: Ben Deane
+>
+> OVERALL EVALUATION: 3 (strong accept)
+> REVIEWER'S CONFIDENCE: 4 (high)
+>
+> ----------- REVIEW -----------
+> This is the kind of talk that I look forward to hearing.  A talk on
+> practical usage of C++ in dirty real world applications, and
+> battle.net sounds about as dirty as they get.
+>
+> Large-scale deployment, heavy client scale-up and testing are issues I
+> face daily and I hope to learn something from this talk because right
+> now the state of the art in the C++ world is far from perfect.
+>
+>
+> ----------------------- REVIEW 4 ---------------------
+> PAPER: 3
+> TITLE: Testing Battle.net (before deploying to millions of players)
+> AUTHORS: Ben Deane
+>
+> OVERALL EVALUATION: 2 (accept)
+> REVIEWER'S CONFIDENCE: 4 (high)
+>
+> ----------- REVIEW -----------
+> Testing a large scale distributed system will be very tricky. Testing
+> code for correctness, performance and scalability without having to
+> deploy a full-scale environment and spin up a million clients? I'm in!
+>
+>
+> ----------------------- REVIEW 5 ---------------------
+> PAPER: 3
+> TITLE: Testing Battle.net (before deploying to millions of players)
+> AUTHORS: Ben Deane
+>
+> OVERALL EVALUATION: 0 (borderline paper) REVIEWER'S CONFIDENCE: 4
+> (high)
+>
+> ----------- REVIEW -----------
+> Even though testing is a large percentage of development costs and
+> testing across network is even more difficult, the question remains
+> what is necessary to modify in C++ that would make this task more
+> efficient? Is there a thread running in the background to monitor
+> performance or any issues that may arise during execution?
+>
+> If these questions can be answered, then let the presentation be given.
+>
+>
+> ----------------------- REVIEW 6 ---------------------
+> PAPER: 3
+> TITLE: Testing Battle.net (before deploying to millions of players)
+> AUTHORS: Ben Deane
+>
+> OVERALL EVALUATION: 2 (accept)
+> REVIEWER'S CONFIDENCE: 3 (medium)
+>
+> ----------- REVIEW -----------
+> Scalability adds a new dimension to the world of testing.  Given the
+> author's experience at Blizzard, I believe he will provide unique
+> insight into building confidence in systems that get deployed to millions of simultaneous users.
+>
+> Given the push towards value semantics (type erasure vs. exposed class
+> hierarchies), I would like to see the author address how to make those
+> things testable as well, (hopefully) without adding complexity or run
+> time cost to the production codebase.
+>
