@@ -20,21 +20,22 @@
 #+LaTeX_CLASS: beamer
 #+COLUMNS: %40ITEM %10BEAMER_env(Env) %9BEAMER_envargs(Env Args) %4BEAMER_col(Col) %10BEAMER_extra(Extra)
 #+LaTeX_HEADER: \usepackage{helvet}
-#+LaTeX_HEADER: \usepackage{color,soul}
+#+LaTeX_HEADER: \usepackage{color}
+#+LaTeX_HEADER: \usepackage{anyfontsize}
 #+LaTeX_HEADER: \usepackage{amsmath, amsthm, amssymb, breqn}
 #+BEAMER_THEME: Madrid
 #+BEAMER_COLOR_THEME: wolverine
 #+STARTUP: beamer
 
 # To generate notes pages only:
-# +LaTeX_CLASS_OPTIONS: [handout]
-# +LaTeX_HEADER: \setbeameroption{show only notes}
-# +LaTeX_HEADER: \usepackage{pgfpages}
-# +LaTeX_HEADER: \pgfpagesuselayout{2 on 1}[letterpaper,portrait,border shrink=5mm]
+#+LaTeX_CLASS_OPTIONS: [handout]
+#+LaTeX_HEADER: \setbeameroption{show only notes}
+#+LaTeX_HEADER: \usepackage{pgfpages}
+#+LaTeX_HEADER: \pgfpagesuselayout{2 on 1}[letterpaper,border shrink=5mm]
 
 # For normal presentation output:
-#+LaTeX_CLASS_OPTIONS: [bigger]
-#+LaTeX_HEADER: \setbeamertemplate{navigation symbols}{}%remove navigation symbols
+# +LaTeX_CLASS_OPTIONS: [bigger]
+# +LaTeX_HEADER: \setbeamertemplate{navigation symbols}{}%remove navigation symbols
 
 # syntax highlighting colors
 #+LaTeX_HEADER: \definecolor{sh_comment}{RGB}{64,128,128}
@@ -51,6 +52,14 @@
   - Matchmaking (cooperative/competitive)
   - Achievements/profiles
 
+** notes                                                          :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- Explain what battle.net does.
+- Game service vs Battle.net umbrella.
+- Define terms.
+
 * Battle.net is highly...
 - Distributed
 - Asynchronous
@@ -61,21 +70,27 @@
   - composition
   - value-oriented
 
-* Battle.net integration testing
-#+attr_latex: :width \textwidth
-[[./csharp-battlenet.png]]
-- API testing is pretty robust
-  - and certainly valuable
-- But this doesn't help me in the moment
-  - slow to build
-  - slow to run
-  - needs a full environment
+** notes                                                          :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- Many machines connected.
+- Almost everything asynchronous, callback-driven.
+- Lots of configuration read at startup time from git repo.
+- Code is pretty good, but size => faults occur.
 
-* My journey towards effective unit testing
+* A familiar situation
 - No practice at unit testing
 - Large project with many moving parts
 - Mature lower level libraries
 - New code (features) added at an alarming rate
+
+** notes                                                          :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- A familiar situation for me and my colleagues.
+- Game industry is not accustomed to unit testing.
 
 * What's typically well-tested?
 - UTF-8 string conversion
@@ -88,49 +103,60 @@
 These things are "easy mode" for tests.
 \end{center}
 
+** notes                                                          :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- Usually well-tested.
+- Not worth thinking about edge cases - can use off-the-shelf tests (eg UTF-8).
+
 * Not-so-well tested?
-- Filesystem interaction (caching downloaded objects)
 - Matchmaking algorithms
 - Queueing/Load balancing algorithms
+- Other high-dependency, asynchronous, "large" code
 
 \begin{center}
 \leavevmode\\[1\baselineskip]
 These things are harder to test. Where to start?
 \end{center}
 
-* My conclusions
-- We don't do unit testing because we aren't practised at it
-- Because we don't do "TDD", we /can't/ do unit testing
-  - Legacy code is poorly structured
-- We have a test framework
-
-* My goals for "unit" tests
-- Fast
-- No data/process dependencies
-- Automated
-- Binary pass/fail
-- Independent
-- No test-only interface support
-- By me, for me
+** notes                                                          :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- This is what I started to think about.
+- I read Kent Beck and Bob Martin. I watched Misko Hevery.
+- Conclusion: we aren't practised at testing.
+- Need to practise!
 
 * No magic bullet
-- I wrote a lock of mocks
+- I wrote a lot of mocks
 - Set up a lot of data structures for test
 - A lot of testing code to keep bug-free
 - But along the way I found
   - better code structure
   - useful techniques
 
-* Enemies of testing
-- Global state
-- Deep inheritance
-- Mixing concerns, coupling
-- I/O
+** notes                                                          :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- My journey.
+- Things were messy for a while. (They even shipped messy.)
+- But I found some useful things to share.
 
-* Enemies of testing
-- Doing work in constructors (cf RAII)
-- Lack of dependency injection
-- Wide interfaces (especially when passed to constructors)
+* Monolithic classes
+\begin{center}
+Problem 1: Getting started testing huge legacy classes
+\end{center}
+
+** notes                                                          :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- in a codebase this size, there are some classes that get large
+- and they do complex things
+- and we need to test them
 
 * Exhibit A: hard to test
 
@@ -197,6 +223,21 @@ public:\\
 \string};}
 \end{scriptsize}
 
+** notes                                                          :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- Explain types.
+- Deep inheritance that mixes concerns.
+  1. What is RPC doing in there?
+  1. And protocol dependency.
+  1. "Traditional" interface-impl hierarchy.
+- Constructor takes 6 args.
+  1. Some constructor args have a wide interface.
+  1. Again RPC.
+  1. Lots of configuration.
+  1. These things are onerous to mock.
+
 * Exhibit B: hard to test
 
 ** block                                                         :B_onlyenv:
@@ -252,6 +293,31 @@ public:\\
 In hindsight, this was a mistake
 \end{center}
 
+** notes                                                          :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- Achievements actually quite well-tested
+- Again the pattern of deriving from protocol
+- Static data loader => IO going on in constructor?
+- Some DI going on (database interface)
+- Constructor args have wide interfaces
+- ServerHelper legitimized the pattern of coupling IO/RPC and functionality
+
+* Patterns inimical to testing
+- Lack of dependency injection
+- Doing work in constructors (cf RAII)
+- Wide interfaces (especially when passed to constructors)
+
+** notes                                                          :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- Everyone tells us that dependency injection is required for testing
+- But it's not enough
+- RAII is bad: testable things shouldn't own resources
+- Wide interfaces to construction are bad
+
 * Class structure for testing
 ** only                                                          :B_onlyenv:
 :PROPERTIES:
@@ -275,10 +341,31 @@ In hindsight, this was a mistake
 [[./diag2.pdf]]
 #+end_center
 
+** notes                                                          :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- Instead of "traditional" interface-impl split
+- Use the split of logic vs interactions
+  - Logic in base
+  - Interactions in derived
+  - Derived has as few dependencies as possible
+  - Ruthlessly inject dependencies
+- Good news: this is quite easy to apply
+
 * Example: Queueing for games
 #+begin_center
 [[./diag3.pdf]]
 #+end_center
+
+** notes                                                          :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- Explain queueing for games.
+- Manage multiple queues.
+- Server capacity, link capacity. KR/TW problem.
+- Rate limiting even in the presence of adequate server capacity.
 
 * Queueing for games
 ** block                                                   :B_ignoreheading:
@@ -358,6 +445,17 @@ public:\\
 \ \ ...\\
 \string};\\}
 \end{scriptsize}
+
+** notes                                                          :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- Moderately complex queueing logic all in the base.
+- Logic in standalone class: no RPC inheritance.
+- Constructor args have narrow interfaces.
+  - callbacks (1-function interface)
+  - server pool: a couple of functions for server capacity information
+- Interface not cluttered with other concerns: just queueing stuff.
 
 * Queueing for games
 ** only                                                           :B_onlyenv:
@@ -543,10 +641,35 @@ public:\\
 \string};\\}
 \end{scriptsize}
 
+** notes                                                          :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- Derive impl from base, using the logic-interaction divide
+- Derived class implements
+  - rpc calls
+  - config
+  - interaction with system
+- Some of this stays at the level of the impl
+- Some is dependency-injected to control the logic
+  - keep base testable with as little setup as poss
+
 * Example: Matchmaking
 #+begin_center
 [[./diag4.pdf]]
 #+end_center
+
+** notes                                                          :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- Explain matchmaking
+  - composition-based
+  - game factory segments player base by difficulty, act, hardcore/non
+  - deals with arbitrary groups of players
+  - lots of telemetry
+  - matching by attributes
+- game factory implements matchmaking strategy
 
 * Matchmaking
 
@@ -621,6 +744,15 @@ public:\\
 \ \ ...\\
 \string};\\}
 \end{scriptsize}
+
+** notes                                                          :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- Small constructor interface
+- Configuration required, but deferred => default config will be testable
+  - Constructor leaves object initialised properly
+- Just the MM logic in factory
 
 * Matchmaking
 ** block                                                   :B_ignoreheading:
@@ -704,6 +836,14 @@ public:\\
 \string};\\}
 \end{scriptsize}
 
+** notes                                                          :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- system events
+- config injection
+- rpc interface
+
 * A successful pattern
 - Decouple logic from other concerns
   - Dependency injection for config etc
@@ -712,11 +852,39 @@ public:\\
   - Just apply the inheritance pattern
   - Some testing beats no testing
 
-* Goals for testable classes
+** notes                                                          :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- Side effect: not bad for optimization
+  - layout: logic members at start of class
+- If you have monolithic classes, you can start splitting logic out as a base class
+  - you get _something_ testable
+  - once you have something testable, you can build on it
+  - tested code is easier to refactor even if it starts out ugly
+
+* Testable classes
 \begin{center}
 Dependency injection is probably the biggest factor affecting whether or not code \emph{is testable at all}.\\[2\baselineskip]
 Even with DI, classes are \emph{onerous to test} unless constructors take few arguments, using narrow interfaces.
 \end{center}
+
+** notes                                                          :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- A practical guideline
+
+* Testing for scalability
+\begin{center}
+Problem 2: Confidence in my code's ability to scale
+\end{center}
+
+** notes                                                          :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- The code has to work when a million players come along
 
 * Testing Performance/Efficiency
 - Different solutions for
@@ -724,6 +892,23 @@ Even with DI, classes are \emph{onerous to test} unless constructors take few ar
   - millions (performance + algorithms)
   - billions (algorithms by construction)
 - Battle.net's working sets are in the millions
+  - e.g. matchmaking
+
+** notes                                                          :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- data set in the thousands =>
+  - performance is king (cache effects etc)
+  - algorithms not really important
+- billions =>
+  - usually highly distributed (can't run on dev machine)
+  - use abstract algebra to achieve correct-by-construction algorithms
+- millions =>
+  - can run on a single machine
+  - performance is important (caching)
+  - but algorithms are also important
+  - can run on dev machines but without scalable data sets
 
 * Problems in million-land
 - Computations can run on a single machine
@@ -731,6 +916,13 @@ Even with DI, classes are \emph{onerous to test} unless constructors take few ar
   - Caching concerns, optimizations can get you 100x
   - But they can't get you 100,000x
 - Algorithms are important to efficiency
+
+** notes                                                          :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- Perf only gets you so far
+- You need algorithms to avoid blowup at scale
 
 * Testing for performance
 - Timed tests are easy, not so useful
@@ -740,25 +932,52 @@ Even with DI, classes are \emph{onerous to test} unless constructors take few ar
   - compare times when optimizing
   - can't tell me if code is fast enough in an absolute sense
 
+** notes                                                          :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- Of course I can time tests
+- This can give me some gross idea of optimizations
+- It's still hard to do things properly (my desktop isn't the production hardware)
+
 * Efficiency: easy to lose
 - Team of engineers hacking away on features
 - \(\mathnormal{O(log\, n)}\) or less is required
 - Easy to accidentally turn it into \(\mathnormal{O(n)}\) (or worse)
 - I need a way to test for algorithmic efficiency
 
+** notes                                                          :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- I work with good engineers, but we're all human
+- I was concerned about this
+- I want the computer to help enforce this
+
 * Testing for efficiency
-- A simple idea
 - Run the same test with different sized inputs
-- Compute ratio of times
 
 #+BEGIN_LaTeX
 \begin{align*}
-\mathnormal{T_1} = & (time\, for\, run\, on\, data\, of\, size\: \mathnormal{N}) \\
-\mathnormal{T_2} = & (time\, for\, run\, on\, data\, of\, size\: \mathnormal{kN})
+\mathnormal{T_1} = & (time\, for\, run\, on\, data\, of\, size\: \mathnormal{N})\\
+\mathnormal{T_2} = & (time\, for\, run\, on\, data\, of\, size\: \mathnormal{kN})\\
+\end{align*}
+\begin{align*}
+\mathnormal{T \quad \propto} & \quad \mathnormal{N}\\
+\mathnormal{T_1 = T(N) \quad =} & \quad \mathnormal{aN}\\
+\mathnormal{T_2 = T(kN) \quad =} & \quad \mathnormal{akN}\\
+\mathnormal{\frac{T_2}{T_1} \quad =} & \quad \mathnormal{k}
 \end{align*}
 #+END_LaTeX
 
-* Bucketing
+** notes                                                          :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- empirical method
+- explain
+
+* Common cases
 #+BEGIN_LaTeX
 \begin{align*}
 \mathnormal{O(1) \Rightarrow} & \mathnormal{\frac{T_2}{T_1} = 1} \\[0.5em]
@@ -769,6 +988,12 @@ Even with DI, classes are \emph{onerous to test} unless constructors take few ar
 \end{align*}
 #+END_LaTeX
 
+** notes                                                          :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- simple math to get figures for each bucket I care about
+
 * This sounds easy, but...
 - Timing is hard
   - sensitive to machine load
@@ -776,9 +1001,20 @@ Even with DI, classes are \emph{onerous to test} unless constructors take few ar
   - sensitive to timing function: granularity/perf
 - Statistical mitigation
 - Somewhat careful choice of \(\mathnormal{k}\), \(\mathnormal{N}\)
-  - I settled on 32 for each (\(\mathnormal{N = 32, kN = 1024}\))
+  - I settled on (\(\mathnormal{N = 100, k = 32}\))
 
-* OK, but...
+** notes                                                          :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- Statistical mitigation = run multiple times, discard outliers, average
+- constants need to be big enough to elicit the required effect
+- but small enough not to make the test slow
+- fast, high frequency timing function is desirable
+- The nice thing is that you don't need to run this optimized
+  - optimization tends only to make things better
+
+* Different-sized inputs
 
 ** block                                                   :B_ignoreheading:
 :PROPERTIES:
@@ -826,7 +1062,10 @@ test->Setup();\\
 ...\\}
 \end{scriptsize}
 
-* Let the test make them?
+** notes                                                          :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
 - Affects the timing if done naively (i.e. wrongly)
   - Adds an \(\mathnormal{O(n)}\) component to the test
   - So move the timing code inside the test also
@@ -835,19 +1074,34 @@ test->Setup();\\
 
 * Let the test make them?
 Result: a typical test
-- ~20 lines setup
-- ~20 lines size-related setup
+- ~40 lines setup
 - ~10 lines timing
 - ~5 lines actual logic
 - ~5 lines test macros
 Yuck.
+
+** notes                                                          :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- I was working with objects that needed some setup
+- monolithic classes, remember?
 
 * Let the test make them?
 - It works well enough to give me confidence
   - Matchmaking won't blow up with a million players
 - So I lived with this for a while...
 - But I'm lazy, I don't want to maintain all this code
-- And I'm a student of Haskell...
+
+** notes                                                          :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- I'm a student of Haskell (Quickcheck)
+- The idea of property-Based testing
+- Usually established in languages with reflection
+- Or sufficiently powerful type systems
+- Explain property-based testing
 
 * Wish-driven development
 \begin{center}
@@ -878,10 +1132,185 @@ What I want\\[1\baselineskip]
 \string}\\[1\baselineskip]}
 \end{scriptsize}
 
-* A short demo
+** notes                                                           :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- I need a way to generate values of "any type"
+- There are lots of things we already do for any type (eg print)
+
+* How to generate \texttt{TYPE}?
 \begin{center}
-(Demo)
+Use a template, naturally\\[1\baselineskip]
+\hrule
 \end{center}
+
+\begin{scriptsize}
+\texttt{template <typename T>\\
+struct Arbitrary\\
+\string{\\
+\ \ static T generate(size_t {\color{sh_comment}\textit{/*generation*/}}, unsigned long int {\color{sh_comment}\textit{/*seed*/}})\\
+\ \ \string{\\
+\ \ \ \ return T();\\
+\ \ \string}\\
+\string};\\[1\baselineskip]}
+\end{scriptsize}
+
+\begin{center}
+\hrule\leavevmode\\[1\baselineskip]
+And specialize...
+\end{center}
+
+** notes                                                          :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- The basic form
+- generation is some idea of how complex the generated thing is
+- and plumb through a random seed for reproducibility
+
+* Specializing \texttt{Arbitrary<T>}
+- Easy to write \texttt{Arbitrary<T>} for arithmetic types
+- Front-load likely edge cases
+  - \texttt{0}
+  - \texttt{numeric_limits<T>::min()}
+  - \texttt{numeric_limits<T>::max()}
+- Otherwise use uniform distribution over range
+
+** notes                                                          :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- Explain
+- Generating arithmetic types is easy
+
+* Specializing \texttt{Arbitrary<T>}
+\begin{center}
+For \texttt{int}-like types\\[1\baselineskip]
+\hrule
+\end{center}
+
+** only                                                          :B_onlyenv:
+:PROPERTIES:
+:BEAMER_env: onlyenv
+:BEAMER_act: <1>
+:END:
+\begin{scriptsize}
+\texttt{static int generate(size_t g, unsigned long int seed)\\
+\string{\\
+\ \ switch (g)\\
+\ \ \string{\\
+\ \ \ \ case 0:\ \hilight{return 0;}\\
+\ \ \ \ case 1:\ \hilight{return std::numeric_limits<T>::min();}\\
+\ \ \ \ case 2:\ \hilight{return std::numeric_limits<T>::max();}\\
+\ \ \ \ default:\\
+\ \ \ \ \string{\\
+\ \ \ \ \ \ std::mt19937 gen(seed);\\
+\ \ \ \ \ \ std::uniform_int_distribution<T> dis(\\
+\ \ \ \ \ \ \ \ std::numeric_limits<T>::min(), std::numeric_limits<T>::max());\\
+\ \ \ \ \ \ return dis(gen);\\
+\ \ \ \ \string}\\
+\ \ \string}\\
+\string}\\[1\baselineskip]}
+\end{scriptsize}
+
+** only                                                          :B_onlyenv:
+:PROPERTIES:
+:BEAMER_env: onlyenv
+:BEAMER_act: <2>
+:END:
+\begin{scriptsize}
+\texttt{static int generate(size_t g, unsigned long int seed)\\
+\string{\\
+\ \ switch (g)\\
+\ \ \string{\\
+\ \ \ \ case 0:\ return 0;\\
+\ \ \ \ case 1:\ return std::numeric_limits<T>::min();\\
+\ \ \ \ case 2:\ return std::numeric_limits<T>::max();\\
+\ \ \ \ default:\\
+\ \ \ \ \string{\\
+\ \ \ \ \ \ \hilight{std::mt19937 gen(seed);}\\
+\ \ \ \ \ \ \hilight{std::uniform_int_distribution<T> dis(}\\
+\ \ \ \ \ \ \ \ \hilight{std::numeric_limits<T>::min(), std::numeric_limits<T>::max());}\\
+\ \ \ \ \ \ \hilight{return dis(gen);}\\
+\ \ \ \ \string}\\
+\ \ \string}\\
+\string}\\[1\baselineskip]}
+\end{scriptsize}
+
+** notes                                                          :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- (Code formatted for slide: in reality, I don't create a mersenne twister on
+  the stack every call)
+- For bools, it's trivial
+- For chars, generate printable values
+
+* Specializing \texttt{Arbitrary<T>}
+- Once we have \texttt{Arbitrary<T>} for fundamental types...
+- Easy to write for compound types
+  - \texttt{vector<T>} etc
+  - \texttt{generate} works in terms of \texttt{generate} on the contained type
+  - ADT-like approach
+
+** notes                                                          :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- Compound types are made of other types of course
+- Can be built up recursively
+
+* Specializing \texttt{Arbitrary<T>}
+\begin{center}
+For compound types (eg \texttt{vector})\\[1\baselineskip]
+\hrule
+\end{center}
+
+\begin{scriptsize}
+\texttt{static vector<T> generate(size_t g, unsigned long int seed)\\
+\string{\\
+\ \ vector<T> v;\\
+\ \ size_t n = 10 * ((g / 100) + 1);\\
+\ \ v.reserve(n);\\
+\ \ std::generate_n(\\
+\ \ \ \ std::back_inserter(v), n, [\&] () \string{\\
+\ \ \ \ \ \ \hilight{return Arbitrary<T>::generate(g, seed++);} \string});\\
+\ \ return v;\\
+\string}\\[1\baselineskip]}
+\end{scriptsize}
+
+** notes                                                          :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- Explain
+- The idea of a "generation" deals with things like how long to make vectors, strings etc
+- Generate for compound type works recursively by generating the contained types
+
+* How to make a property test?
+\begin{center}
+What I want\\[1\baselineskip]
+\hrule
+\end{center}
+
+\begin{scriptsize}
+\texttt{DEF_PROPERTY(TestName, Suite, \hilight{const string\& s})\\
+\string{\\
+\ \ {\color{sh_comment}\textit{// do something with s\\
+\ \ // that should be true for any input}}\\
+\ \ ...\\
+\ \ return property_holds;\\
+\string}\\[1\baselineskip]}
+\end{scriptsize}
+
+** notes                                                          :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- So far, I know how to generate the type
+- Now I needed to figure out how to deal with the test
+- Normally, tests don't have arguments
 
 * Test macros expand into functions
 \begin{center}
@@ -912,6 +1341,13 @@ bool NonceStruct::operator()(const string\& s)\\
 \ \ ...\\
 \string}\\[1\baselineskip]}
 \end{scriptsize}
+
+** notes                                                          :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- the macro instantiates a function object
+- I can discover the type of the operator() argument
 
 * Discover the type of the function argument
 \begin{center}
@@ -985,12 +1421,75 @@ struct function_traits<R(C::*)(A)>\\
 ...\\[1\baselineskip]}
 \end{scriptsize}
 
+** notes                                                          :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- googling function traits turns up something very like this
+- explain (slowly)
+- omitted further specializations dealing with various const & ref qualifiers
+- now I know
+  - The argument type to generate
+  - How to generate it
+- All I need to do is figure out how to write Run() for a property test
+- I need to take the operator() function, whose type varies for each test
+- And make it callable in a uniform way
+- Single-function interface on a varying-type object
+- tailor-made for type erasure
+
 * Implement a \texttt{Run} function
 \begin{center}
 \texttt{Run()} for a property test\\[1\baselineskip]
 \hrule
 \end{center}
 
+** only                                                          :B_onlyenv:
+:PROPERTIES:
+:BEAMER_env: onlyenv
+:BEAMER_act: <1>
+:END:
+\begin{scriptsize}
+\texttt{{\color{sh_comment}\textit{// DEF_PROPERTY(TestName, Suite, TYPE) becomes...}}\\
+struct NonceStruct :\ public Test\\
+\string{\\
+\ \ ...\\
+\ \ virtual \hilight{bool Run()} override\\
+\ \ \string{\\
+\ \ \ \ {\color{sh_comment}\textit{// Property will type-erase NonceStruct, discover its argument type}}\\
+\ \ \ \ Property p(*this);\\
+\ \ \ \ {\color{sh_comment}\textit{// check() generates arguments to call NonceStruct(TYPE)}}\\
+\ \ \ \ return p.check();\\
+\ \ \string}\\
+\ \ ...\\
+\string};\\[1\baselineskip]}
+\end{scriptsize}
+
+** only                                                          :B_onlyenv:
+:PROPERTIES:
+:BEAMER_env: onlyenv
+:BEAMER_act: <2>
+:END:
+\begin{scriptsize}
+\texttt{{\color{sh_comment}\textit{// DEF_PROPERTY(TestName, Suite, TYPE) becomes...}}\\
+struct NonceStruct :\ public Test\\
+\string{\\
+\ \ ...\\
+\ \ virtual bool Run() override\\
+\ \ \string{\\
+\ \ \ \ {\color{sh_comment}\textit{// Property will type-erase NonceStruct, discover its argument type}}\\
+\ \ \ \ Property p(\hilight{*this});\\
+\ \ \ \ {\color{sh_comment}\textit{// check() generates arguments to call NonceStruct(TYPE)}}\\
+\ \ \ \ return p.check();\\
+\ \ \string}\\
+\ \ ...\\
+\string};\\[1\baselineskip]}
+\end{scriptsize}
+
+** only                                                          :B_onlyenv:
+:PROPERTIES:
+:BEAMER_env: onlyenv
+:BEAMER_act: <3>
+:END:
 \begin{scriptsize}
 \texttt{{\color{sh_comment}\textit{// DEF_PROPERTY(TestName, Suite, TYPE) becomes...}}\\
 struct NonceStruct :\ public Test\\
@@ -1001,11 +1500,118 @@ struct NonceStruct :\ public Test\\
 \ \ \ \ {\color{sh_comment}\textit{// Property will type-erase NonceStruct, discover its argument type}}\\
 \ \ \ \ Property p(*this);\\
 \ \ \ \ {\color{sh_comment}\textit{// check() generates arguments to call NonceStruct(TYPE)}}\\
-\ \ \ \ return p.check();\\
+\ \ \ \ return \hilight{p.check();}\\
 \ \ \string}\\
 \ \ ...\\
 \string};\\[1\baselineskip]}
 \end{scriptsize}
+
+** notes                                                          :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- Run() function is inherited from Test: this is quite standard
+- "this" is the struct whose operator() varies
+  - gets type-erased by Property
+- Property exposes check() which calls the type-erased operator()
+
+* \texttt{Property} type-erases \texttt{NonceStruct}
+** only                                                          :B_onlyenv:
+:PROPERTIES:
+:BEAMER_env: onlyenv
+:BEAMER_act: <1>
+:END:
+\begin{scriptsize}
+\texttt{struct Property\\
+\string{\\
+\ \ \hilight{template <typename F>}\\
+\ \ \hilight{Property(const F\& f)}\\
+\ \ \ \ \hilight{:\ m_internal(std::make_unique<Internal<F>{}>(f))}\\
+\ \ \hilight{\string{\string}}\\[1\baselineskip]
+\ \ bool check(...)\\
+\ \ \string{\\
+\ \ \ \ return m_internal->check(...);\\
+\ \ \string}\\[1\baselineskip]
+\ \ struct InternalBase\\
+\ \ \string{\\
+\ \ \ \ virtual \textasciitilde{}InternalBase() \string{\string}\\
+\ \ \ \ virtual bool check(...) = 0;\\
+\ \ \string};\\[1\baselineskip]
+\ \ template <typename U>\\
+\ \ struct Internal :\ public InternalBase\\
+\ \ \string{ ...\ \string};\\[1\baselineskip]
+\ \ \hilight{std::unique_ptr<InternalBase> m_internal;}\\
+\string};\\[1\baselineskip]}
+\end{scriptsize}
+
+** only                                                          :B_onlyenv:
+:PROPERTIES:
+:BEAMER_env: onlyenv
+:BEAMER_act: <2>
+:END:
+\begin{scriptsize}
+\texttt{struct Property\\
+\string{\\
+\ \ template <typename F>\\
+\ \ Property(const F\& f)\\
+\ \ \ \ :\ m_internal(std::make_unique<Internal<F>{}>(f))\\
+\ \ \string{\string}\\[1\baselineskip]
+\ \ \hilight{bool check(...)}\\
+\ \ \string{\\
+\ \ \ \ \hilight{return m_internal->check(...);}\\
+\ \ \string}\\[1\baselineskip]
+\ \ struct InternalBase\\
+\ \ \string{\\
+\ \ \ \ virtual \textasciitilde{}InternalBase() \string{\string}\\
+\ \ \ \ \hilight{virtual bool check(...) = 0;}\\
+\ \ \string};\\[1\baselineskip]
+\ \ template <typename U>\\
+\ \ struct Internal :\ public InternalBase\\
+\ \ \string{ ...\ \string};\\[1\baselineskip]
+\ \ std::unique_ptr<InternalBase> m_internal;\\
+\string};\\[1\baselineskip]}
+\end{scriptsize}
+
+** only                                                          :B_onlyenv:
+:PROPERTIES:
+:BEAMER_env: onlyenv
+:BEAMER_act: <3>
+:END:
+\begin{scriptsize}
+\texttt{struct Property\\
+\string{\\
+\ \ template <typename F>\\
+\ \ Property(const F\& f)\\
+\ \ \ \ :\ m_internal(std::make_unique<Internal<F>{}>(f))\\
+\ \ \string{\string}\\[1\baselineskip]
+\ \ bool check(...)\\
+\ \ \string{\\
+\ \ \ \ return m_internal->check(...);\\
+\ \ \string}\\[1\baselineskip]
+\ \ struct InternalBase\\
+\ \ \string{\\
+\ \ \ \ virtual \textasciitilde{}InternalBase() \string{\string}\\
+\ \ \ \ virtual bool check(...) = 0;\\
+\ \ \string};\\[1\baselineskip]
+\ \ \hilight{template <typename U>}\\
+\ \ \hilight{struct Internal :\ public InternalBase}\\
+\ \ \hilight{\string{ ...\ \string};}\\[1\baselineskip]
+\ \ std::unique_ptr<InternalBase> m_internal;\\
+\string};\\[1\baselineskip]}
+\end{scriptsize}
+
+** notes                                                          :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- formatted for slide
+- standard type-erasure pattern
+- here's the constructor that's a template and captures the passed-in type
+- here's the stored type-erased thing
+- here's the exposed interface: the check function
+- the omitted args are the generation and random seed params we saw earlier
+  that will be used with the call to Arbitrary::generate
+- let's look inside Internal
 
 * \texttt{Property} type-erases \texttt{NonceStruct}
 \begin{center}
@@ -1024,7 +1630,7 @@ struct Internal :\ public InternalBase\\
 \string{\\
 \ \ ...\\[1\baselineskip]
 \ \ \hilight{using paramType = std::decay_t<typename function_traits<T>::argType>;}\\[1\baselineskip]
-\ \ virtual bool check()\\
+\ \ virtual bool check(...)\\
 \ \ \string{\\
 \ \ \ \ ...\\
 \ \ \ \ {\color{sh_comment}\textit{// generate a value of the right type}}\\
@@ -1047,7 +1653,7 @@ struct Internal :\ public InternalBase\\
 \string{\\
 \ \ ...\\[1\baselineskip]
 \ \ using paramType = std::decay_t<typename function_traits<T>::argType>;\\[1\baselineskip]
-\ \ virtual bool check()\\
+\ \ virtual bool check(...)\\
 \ \ \string{\\
 \ \ \ \ ...\\
 \ \ \ \ {\color{sh_comment}\textit{// generate a value of the right type}}\\
@@ -1059,115 +1665,17 @@ struct Internal :\ public InternalBase\\
 \string};\\[1\baselineskip]}
 \end{scriptsize}
 
-* How to generate \texttt{TYPE}?
-\begin{center}
-Use a template, naturally\\[1\baselineskip]
-\hrule
-\end{center}
-
-\begin{scriptsize}
-\texttt{template <typename T>\\
-struct Arbitrary\\
-\string{\\
-\ \ static T generate(size_t {\color{sh_comment}\textit{/*generation*/}}, unsigned long int {\color{sh_comment}\textit{/*seed*/}})\\
-\ \ \string{\\
-\ \ \ \ return T();\\
-\ \ \string}\\
-\string};\\[1\baselineskip]}
-\end{scriptsize}
-
-\begin{center}
-\hrule\leavevmode\\[1\baselineskip]
-And specialize...
-\end{center}
-
-* Specializing \texttt{Arbitrary<T>}
-- Easy to write \texttt{Arbitrary<T>} for fundamental types
-- Front-load likely edge cases
-  - \texttt{0}
-  - \texttt{numeric_limits<T>::min()}
-  - \texttt{numeric_limits<T>::max()}
-- Otherwise use uniform distribution over range
-
-* Specializing \texttt{Arbitrary<T>}
-\begin{center}
-For \texttt{int}-like types\\[1\baselineskip]
-\hrule
-\end{center}
-
-** only                                                          :B_onlyenv:
+** notes                                                          :B_noteNH:
 :PROPERTIES:
-:BEAMER_env: onlyenv
-:BEAMER_act: <1>
+:BEAMER_env: noteNH
 :END:
-\begin{scriptsize}
-\texttt{static int generate(size_t g, unsigned long int seed)\\
-\string{\\
-\ \ switch (g)\\
-\ \ \string{\\
-\ \ \ \ case 0:\ \hilight{return 0;}\\
-\ \ \ \ case 1:\ \hilight{return std::numeric_limits<T>::min();}\\
-\ \ \ \ case 2:\ \hilight{return std::numeric_limits<T>::max();}\\
-\ \ \ \ default:\\
-\ \ \ \ \string{\\
-\ \ \ \ \ \ std::mt19937 gen(seed);\\
-\ \ \ \ \ \ std::uniform_int_distribution<T> dis(\\
-\ \ \ \ \ \ \ \ std::numeric_limits<T>::min(), std::numeric_limits<T>::max());\\
-\ \ \ \ \ \ return dis(gen);\\
-\ \ \ \ \string}\\
-\ \ \string}\\
-\string}\\[1\baselineskip]}
-\end{scriptsize}
+- check generates a value using Arbitrary::generate
+- passes it to the operator() of the NonceStruct
 
-** only                                                          :B_onlyenv:
-:PROPERTIES:
-:BEAMER_env: onlyenv
-:BEAMER_act: <2>
-:END:
-\begin{scriptsize}
-\texttt{static int generate(size_t g, unsigned long int seed)\\
-\string{\\
-\ \ switch (g)\\
-\ \ \string{\\
-\ \ \ \ case 0:\ return 0;\\
-\ \ \ \ case 1:\ return std::numeric_limits<T>::min();\\
-\ \ \ \ case 2:\ return std::numeric_limits<T>::max();\\
-\ \ \ \ default:\\
-\ \ \ \ \string{\\
-\ \ \ \ \ \ \hilight{std::mt19937 gen(seed);}\\
-\ \ \ \ \ \ \hilight{std::uniform_int_distribution<T> dis(}\\
-\ \ \ \ \ \ \ \ \hilight{std::numeric_limits<T>::min(), std::numeric_limits<T>::max());}\\
-\ \ \ \ \ \ \hilight{return dis(gen);}\\
-\ \ \ \ \string}\\
-\ \ \string}\\
-\string}\\[1\baselineskip]}
-\end{scriptsize}
-
-* Specializing \texttt{Arbitrary<T>}
-- Once we have \texttt{Arbitrary<T>} for fundamental types...
-- Easy to write for compound types
-  - \texttt{vector<T>} etc
-  - \texttt{generate} works in terms of \texttt{generate} on the contained type
-  - the power of ADTs!
-
-* Specializing \texttt{Arbitrary<T>}
+* A short demo
 \begin{center}
-For compound types (eg \texttt{vector})\\[1\baselineskip]
-\hrule
+(Demo)
 \end{center}
-
-\begin{scriptsize}
-\texttt{static vector<T> generate(size_t g, unsigned long int seed)\\
-\string{\\
-\ \ vector<T> v;\\
-\ \ size_t n = 10 * ((g / 100) + 1);\\
-\ \ v.reserve(n);\\
-\ \ std::generate_n(\\
-\ \ \ \ std::back_inserter(v), n, [\&] () \string{\\
-\ \ \ \ \ \ \hilight{return Arbitrary<T>::generate(g++, seed++);} \string});\\
-\ \ return v;\\
-\string}\\[1\baselineskip]}
-\end{scriptsize}
 
 * Now we have property tests
 - Macro expands \texttt{NonceStruct} with \texttt{operator()}
@@ -1177,6 +1685,14 @@ For compound types (eg \texttt{vector})\\[1\baselineskip]
   - \texttt{Arbitrary<T>::generate} to make a \texttt{T}
   - Call \texttt{NonceStruct::operator()}
 - And plumb through parameters like number of checks, random seed
+
+** notes                                                          :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- recap
+- now we can use this ability to generate to power algorithmic tests
+- but before we get to that, shrink
 
 * Better checks for compound types
 \begin{center}
@@ -1200,19 +1716,32 @@ struct Arbitrary\\
 \texttt{shrink} returns a \texttt{vector} of "reduced" \texttt{T}'s
 \end{center}
 
+** notes                                                          :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- borrowed from Quickcheck
+- we can do more than just generate
+- shrink returns a vector of T's
+
 * Better checks for compound types
 \begin{center}
 A simple binary search\\[1\baselineskip]
 \hrule
 \end{center}
 
+** only                                                          :B_onlyenv:
+:PROPERTIES:
+:BEAMER_env: onlyenv
+:BEAMER_act: <1>
+:END:
 \begin{scriptsize}
 \texttt{static std::vector<std::basic_string<T>{}> shrink(\\
 \ \ const std::basic_string<T>\& t)\\
 \string{\\
 \ \ std::vector<std::basic_string<T>{}> v;\\
-\ \ if (t.size() < 2)\\
-\ \ \ \ return v;\\
+\ \ \hilight{if (t.size() < 2)}\\
+\ \ \ \ \hilight{return v;}\\
 \ \ auto l = t.size() / 2;\\
 \ \ v.push_back(t.substr(0, l));\\
 \ \ v.push_back(t.substr(l));\\
@@ -1220,9 +1749,46 @@ A simple binary search\\[1\baselineskip]
 \string}\\[1\baselineskip]}
 \end{scriptsize}
 
+** only                                                          :B_onlyenv:
+:PROPERTIES:
+:BEAMER_env: onlyenv
+:BEAMER_act: <2>
+:END:
+\begin{scriptsize}
+\texttt{static std::vector<std::basic_string<T>{}> shrink(\\
+\ \ const std::basic_string<T>\& t)\\
+\string{\\
+\ \ std::vector<std::basic_string<T>{}> v;\\
+\ \ if (t.size() < 2)\\
+\ \ \ \ return v;\\
+\ \ \hilight{auto l = t.size() / 2;}\\
+\ \ \hilight{v.push_back(t.substr(0, l));}\\
+\ \ \hilight{v.push_back(t.substr(l));}\\
+\ \ return v;\\
+\string}\\[1\baselineskip]}
+\end{scriptsize}
+
+** block                                                   :B_ignoreheading:
+:PROPERTIES:
+:BEAMER_env: ignoreheading
+:END:
 \begin{center}
 \hrule\leavevmode\\[1\baselineskip]
 Call \texttt{shrink} repeatedly to find a minimal fail case
+\end{center}
+
+** notes                                                          :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- base case: return empty vector
+- recurse, making the returned vector elements smaller
+- for the containers, just use a binary search strategy
+- explain how the calling code will follow failing cases
+
+* Demo #2
+\begin{center}
+(Demo)
 \end{center}
 
 * Testing for efficiency (again)
@@ -1237,18 +1803,17 @@ Now the computer can generate \(\mathnormal{N}\), \(\mathnormal{kN}\) values\\[1
 :BEAMER_act: <1>
 :END:
 \begin{scriptsize}
-\texttt{static vector<T> generate(size_t g, unsigned long int seed)\\
+\texttt{static vector<T> \hilight{generate}(size_t g, unsigned long int seed)\\
 \string{\\
 \ \ vector<T> v;\\
-\ \ size_t n = 10 * ((g / 100) + 1);\\
+\ \ \hilight{size_t n = 10 * ((g / 100) + 1);}\\
 \ \ v.reserve(n);\\
 \ \ std::generate_n(\\
 \ \ \ \ std::back_inserter(v), n, [\&] () \string{\\
-\ \ \ \ \ \ return \hilight{Arbitrary<T>::generate}(g++, seed++); \string});\\
+\ \ \ \ \ \ return \hilight{Arbitrary<T>::generate}(g, seed++); \string});\\
 \ \ return v;\\
 \string}\\[1\baselineskip]}
 \end{scriptsize}
-
 
 ** \texttt{Arbitrary<T>::generate_n()}                           :B_onlyenv:
 :PROPERTIES:
@@ -1256,7 +1821,7 @@ Now the computer can generate \(\mathnormal{N}\), \(\mathnormal{kN}\) values\\[1
 :BEAMER_act: <2>
 :END:
 \begin{scriptsize}
-\texttt{static vector<T> generate_n(size_t g, unsigned long int seed)\\
+\texttt{static vector<T> \hilight{generate_n}(size_t g, unsigned long int seed)\\
 \string{\\
 \ \ vector<T> v;\\
 \ \ {\color{sh_comment}\textit{// use g directly instead of a "loose" value}}\\
@@ -1277,6 +1842,15 @@ Now the computer can generate \(\mathnormal{N}\), \(\mathnormal{kN}\) values\\[1
 Add \texttt{generate_n} as a tighter form of \texttt{generate}
 \end{center}
 
+** notes                                                          :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- For algorithmic guarantees, we need to lock down a specific size
+- Otherwise generate_n works exactly the same as generate
+- the calling code doesn't need to follow failures
+- these tests are just for timing
+
 * Now I can write
 \begin{center}
 A sample complexity test\\[1\baselineskip]
@@ -1287,7 +1861,9 @@ A sample complexity test\\[1\baselineskip]
 \texttt{DEF_COMPLEXITY_PROPERTY(TestName, Suite, ORDER_N, const string\& s)\\
 \string{\\
 \ \ {\color{sh_comment}\textit{// something that's supposed to be order N...}}\\
+\ \ ...\\
 \ \ std::max_element(s.begin(), s.end());\\
+\ \ ...\\
 \string}\\[1\baselineskip]}
 \end{scriptsize}
 
@@ -1297,10 +1873,467 @@ And specialize \texttt{Arbitrary} for my own types as necessary\\
 Much less boilerplate to maintain
 \end{center}
 
-* Demo #2
+** notes                                                          :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- can use O(1), O(log n), O(n), O(n log n), O(n^2)
+- if the test comes in at or under the specified order, that's a pass
+
+* Demo #3
 \begin{center}
 (Demo)
 \end{center}
+
+* Before and After
+#+begin_src c++
+#+end_src
+\begin{columns}
+\begin{column}{0.4\textwidth}
+\begin{minted}[frame=none,fontsize=\fontsize{2}{2.4}]{c++}
+PERFORDERTEST_WITH_LEVEL(CoopGameFactory, MatchPerf, test::ORDER_1, 1)
+{
+  CoopGameFactory gf(version, FourCC(), 0);
+  ConfigureFactory(&gf, 1, 4, 4);
+
+  protocol::game_master::GameProperties properties;
+  protocol::attribute::AttributeFilter* filter = properties.mutable_filter();
+  filter->set_op(protocol::attribute::AttributeFilter::MATCH_ALL);
+
+  // Fill the forming games list with a lot of games.
+  for (size_t n = 0; n < numElements; ++n)
+  {
+    AttributeList attrs;
+    attrs.Append("Foo", Variant::MakeInt(n + 1));
+    attrs.ToProtocol(filter->mutable_attribute());
+
+    vector<game::Player::Ptr> players;
+    for (int i = 1; i <= 2; ++i)
+    {
+      game::Player::Ptr p(new game::Player);
+      p->m_id = EntityId(EntityId::KIND_GAME_ACCOUNT, 0, i);
+      players.push_back(p);
+    }
+    rpc::ObjectAddress subscriber;
+    GameRequestId id = n;
+    GameId gameId = ChannelImpl::GetNextChannelId(n);
+    Error status = gf.RegisterPlayers(players, subscriber, &properties, gameId, id);
+    EXPECT_EQ(status, ERROR_OK);
+  }
+  EXPECT_EQ(GetVarValue("NumPlayersMatchingNow"), 2 * numElements);
+
+  // Now measure matching performance. Add a registration and match it, n
+  // times.
+  AttributeList attrs;
+  attrs.Append("Foo", Variant::MakeInt(numElements + 1));
+  attrs.ToProtocol(filter->mutable_attribute());
+
+  m_numcalls__ = 1000;
+  int uniqueGameId = numElements;
+  ptime start = microsec_clock::universal_time();
+  for (size_t n = 0; n < m_numcalls__; ++n, ++uniqueGameId)
+  {
+    {
+      vector<game::Player::Ptr> players;
+      for (int i = 1; i <= 2; ++i)
+      {
+        game::Player::Ptr p(new game::Player);
+        p->m_id = EntityId(EntityId::KIND_GAME_ACCOUNT, 0, i);
+        players.push_back(p);
+      }
+      rpc::ObjectAddress subscriber;
+      GameRequestId id = uniqueGameId;
+      GameId gameId = ChannelImpl::GetNextChannelId(uniqueGameId);
+      Error status = gf.RegisterPlayers(players, subscriber, &properties, gameId, id);
+      EXPECT_EQ(status, ERROR_OK);
+    }
+
+    ++uniqueGameId;
+
+    {
+      vector<game::Player::Ptr> players;
+      for (int i = 3; i <= 4; ++i)
+      {
+        game::Player::Ptr p(new game::Player);
+        p->m_id = EntityId(EntityId::KIND_GAME_ACCOUNT, 0, i);
+        players.push_back(p);
+      }
+      rpc::ObjectAddress subscriber;
+      GameRequestId id = uniqueGameId;
+      GameId gameId = ChannelImpl::GetNextChannelId(uniqueGameId);
+      Error status = gf.RegisterPlayers(players, subscriber, &properties, gameId, id);
+      EXPECT_EQ(status, ERROR_OK);
+    }
+  }
+  time_duration t = microsec_clock::universal_time() - start;
+
+  EXPECT_EQ(GetVarValue("NumPlayersMatchingNow"), 2 * numElements);
+  EXPECT_EQ(GetVarValue("NumGamesNow"), m_numcalls__);
+  EXPECT_EQ(GetVarValue("NumPlayersInGamesNow"), 4 * m_numcalls__);
+
+  return t.total_microseconds();
+}
+\end{minted}
+\end{column}
+
+\begin{column}{0.4\textwidth}
+\begin{onlyenv}<2>
+\begin{minted}[frame=none,fontsize=\fontsize{2}{2.4}]{c++}
+PERFORDERTEST_WITH_LEVEL(CoopGameFactory, MatchPerf, test::ORDER_1, 1)
+{
+  CoopGameFactory gf(version, FourCC(), 0);
+  ConfigureFactory(&gf, 1, 4, 4);
+
+  protocol::game_master::GameProperties properties;
+  protocol::attribute::AttributeFilter* filter = properties.mutable_filter();
+  filter->set_op(protocol::attribute::AttributeFilter::MATCH_ALL);
+
+  // Fill the forming games list with a lot of games.
+  for (size_t n = 0; n < numElements; ++n)
+  {
+    AttributeList attrs;
+    attrs.Append("Foo", Variant::MakeInt(n + 1));
+    attrs.ToProtocol(filter->mutable_attribute());
+
+    vector<game::Player::Ptr> players;
+    for (int i = 1; i <= 2; ++i)
+    {
+      game::Player::Ptr p(new game::Player);
+      p->m_id = EntityId(EntityId::KIND_GAME_ACCOUNT, 0, i);
+      players.push_back(p);
+    }
+    rpc::ObjectAddress subscriber;
+    GameRequestId id = n;
+    GameId gameId = ChannelImpl::GetNextChannelId(n);
+    Error status = gf.RegisterPlayers(players, subscriber, &properties, gameId, id);
+    EXPECT_EQ(status, ERROR_OK);
+  }
+  EXPECT_EQ(GetVarValue("NumPlayersMatchingNow"), 2 * numElements);
+
+  // Now measure matching performance. Add a registration and match it, n
+  // times.
+  AttributeList attrs;
+  attrs.Append("Foo", Variant::MakeInt(numElements + 1));
+  attrs.ToProtocol(filter->mutable_attribute());
+
+  m_numcalls__ = 1000;
+  int uniqueGameId = numElements;
+  ptime start = microsec_clock::universal_time();
+  for (size_t n = 0; n < m_numcalls__; ++n, ++uniqueGameId)
+  {
+    {
+      vector<game::Player::Ptr> players;
+      for (int i = 1; i <= 2; ++i)
+      {
+        game::Player::Ptr p(new game::Player);
+        p->m_id = EntityId(EntityId::KIND_GAME_ACCOUNT, 0, i);
+        players.push_back(p);
+      }
+      rpc::ObjectAddress subscriber;
+      GameRequestId id = uniqueGameId;
+      GameId gameId = ChannelImpl::GetNextChannelId(uniqueGameId);
+      Error status = gf.RegisterPlayers(players, subscriber, &properties, gameId, id);
+      EXPECT_EQ(status, ERROR_OK);
+    }
+
+    ++uniqueGameId;
+
+    {
+      vector<game::Player::Ptr> players;
+      for (int i = 3; i <= 4; ++i)
+      {
+        game::Player::Ptr p(new game::Player);
+        p->m_id = EntityId(EntityId::KIND_GAME_ACCOUNT, 0, i);
+        players.push_back(p);
+      }
+      rpc::ObjectAddress subscriber;
+      GameRequestId id = uniqueGameId;
+      GameId gameId = ChannelImpl::GetNextChannelId(uniqueGameId);
+      Error status = gf.RegisterPlayers(players, subscriber, &properties, gameId, id);
+      EXPECT_EQ(status, ERROR_OK);
+    }
+  }
+  time_duration t = microsec_clock::universal_time() - start;
+
+  EXPECT_EQ(GetVarValue("NumPlayersMatchingNow"), 2 * numElements);
+  EXPECT_EQ(GetVarValue("NumGamesNow"), m_numcalls__);
+  EXPECT_EQ(GetVarValue("NumPlayersInGamesNow"), 4 * m_numcalls__);
+
+  return t.total_microseconds();
+}
+\end{minted}
+\end{onlyenv}
+\begin{onlyenv}<3>
+\begin{minted}[frame=none,fontsize=\fontsize{2}{2.4}]{c++}
+PERFORDERTEST_WITH_LEVEL(CoopGameFactory, MatchPerf, test::ORDER_1, 1)
+{
+
+
+
+  protocol::game_master::GameProperties properties;
+  protocol::attribute::AttributeFilter* filter = properties.mutable_filter();
+  filter->set_op(protocol::attribute::AttributeFilter::MATCH_ALL);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  // Now measure matching performance. Add a registration and match it, n
+  // times.
+  AttributeList attrs;
+  attrs.Append("Foo", Variant::MakeInt(numElements + 1));
+  attrs.ToProtocol(filter->mutable_attribute());
+
+  m_numcalls__ = 1000;
+  int uniqueGameId = numElements;
+  ptime start = microsec_clock::universal_time();
+  for (size_t n = 0; n < m_numcalls__; ++n, ++uniqueGameId)
+  {
+    {
+      vector<game::Player::Ptr> players;
+
+
+
+
+
+
+      rpc::ObjectAddress subscriber;
+      GameRequestId id = uniqueGameId;
+      GameId gameId = ChannelImpl::GetNextChannelId(uniqueGameId);
+      Error status = gf.RegisterPlayers(players, subscriber, &properties, gameId, id);
+      EXPECT_EQ(status, ERROR_OK);
+    }
+
+    ++uniqueGameId;
+
+    {
+      vector<game::Player::Ptr> players;
+
+
+
+
+
+
+      rpc::ObjectAddress subscriber;
+      GameRequestId id = uniqueGameId;
+      GameId gameId = ChannelImpl::GetNextChannelId(uniqueGameId);
+      Error status = gf.RegisterPlayers(players, subscriber, &properties, gameId, id);
+      EXPECT_EQ(status, ERROR_OK);
+    }
+  }
+  time_duration t = microsec_clock::universal_time() - start;
+
+  EXPECT_EQ(GetVarValue("NumPlayersMatchingNow"), 2 * numElements);
+  EXPECT_EQ(GetVarValue("NumGamesNow"), m_numcalls__);
+  EXPECT_EQ(GetVarValue("NumPlayersInGamesNow"), 4 * m_numcalls__);
+
+  return t.total_microseconds();
+}
+\end{minted}
+\end{onlyenv}
+\begin{onlyenv}<4>
+\begin{minted}[frame=none,fontsize=\fontsize{2}{2.4}]{c++}
+PERFORDERTEST_WITH_LEVEL(CoopGameFactory, MatchPerf, test::ORDER_1, 1)
+{
+
+
+
+  protocol::game_master::GameProperties properties;
+  protocol::attribute::AttributeFilter* filter = properties.mutable_filter();
+  filter->set_op(protocol::attribute::AttributeFilter::MATCH_ALL);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  // Now measure matching performance. Add a registration and match it, n
+  // times.
+  AttributeList attrs;
+  attrs.Append("Foo", Variant::MakeInt(numElements + 1));
+  attrs.ToProtocol(filter->mutable_attribute());
+
+
+  int uniqueGameId = numElements;
+
+
+
+    {
+      vector<game::Player::Ptr> players;
+
+
+
+
+
+
+      rpc::ObjectAddress subscriber;
+      GameRequestId id = uniqueGameId;
+      GameId gameId = ChannelImpl::GetNextChannelId(uniqueGameId);
+      Error status = gf.RegisterPlayers(players, subscriber, &properties, gameId, id);
+      EXPECT_EQ(status, ERROR_OK);
+    }
+
+    ++uniqueGameId;
+
+    {
+      vector<game::Player::Ptr> players;
+
+
+
+
+
+
+      rpc::ObjectAddress subscriber;
+      GameRequestId id = uniqueGameId;
+      GameId gameId = ChannelImpl::GetNextChannelId(uniqueGameId);
+      Error status = gf.RegisterPlayers(players, subscriber, &properties, gameId, id);
+      EXPECT_EQ(status, ERROR_OK);
+    }
+
+
+
+  EXPECT_EQ(GetVarValue("NumPlayersMatchingNow"), 2 * numElements);
+
+
+
+
+}
+\end{minted}
+\end{onlyenv}
+\begin{onlyenv}<5>
+\begin{minted}[frame=none,fontsize=\fontsize{2}{2.4}]{c++}
+PERFORDERTEST_WITH_LEVEL(CoopGameFactory, MatchPerf, test::ORDER_1, 1)
+{
+
+
+
+  protocol::game_master::GameProperties properties;
+  protocol::attribute::AttributeFilter* filter = properties.mutable_filter();
+  filter->set_op(protocol::attribute::AttributeFilter::MATCH_ALL);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  // Now measure matching performance. Add a registration and match it, n
+  // times.
+  AttributeList attrs;
+  attrs.Append("Foo", Variant::MakeInt(numElements + 1));
+  attrs.ToProtocol(filter->mutable_attribute());
+
+
+
+
+
+
+    {
+      vector<game::Player::Ptr> players;
+
+
+
+
+
+
+      rpc::ObjectAddress subscriber;
+      GameRequestId id = uniqueGameId;
+      GameId gameId = ChannelImpl::GetNextChannelId(uniqueGameId);
+      Error status = gf.RegisterPlayers(players, subscriber, &properties, gameId, id);
+      EXPECT_EQ(status, ERROR_OK);
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  EXPECT_EQ(GetVarValue("NumPlayersMatchingNow"), 2 * numElements);
+
+
+
+
+}
+\end{minted}
+\end{onlyenv}
+\end{column}
+
+\end{columns}
+
+** notes                                                          :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- Get rid of
+  - generation code
+  - timing code
+- refactor code made unnecessary by the new framework
+- ~80 lines -> ~20 lines
 
 * So that's where I am now
 - Dependency injection (little work in constructors)
@@ -1313,7 +2346,7 @@ Much less boilerplate to maintain
 * The future?
 - \texttt{Arbitrary} opens the door for fuzz testing?
 - Alternative walk strategies through the input space
-  - Hilbert?
+  - Hilbert
   - Morton
   - etc
 - I'm still lazy; the computer isn't doing enough for me yet
@@ -1332,7 +2365,7 @@ And I'm more confident changing code with a guarantee that correctness/efficienc
 
 * Thanks for listening
 \begin{center}
-Code: \texttt{https://github.com/elbeno/testinator}\\[2\baselineskip]
+C++14 code: \texttt{https://github.com/elbeno/testinator}\\[2\baselineskip]
 Me: \texttt{\href{mailto:bdeane@blizzard.com}{bdeane@blizzard.com}, \href{http://www.twitter.com/ben_deane}{@ben_deane}}
 \end{center}
 
