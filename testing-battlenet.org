@@ -9,7 +9,7 @@
 #+DESCRIPTION: C++-oriented solutions to testing Battle.net before deployment
 #+KEYWORDS: battle.net testing c++
 #+LANGUAGE:  en
-#+OPTIONS:   H:1 num:t toc:nil \n:nil @:t ::t |:t ^:nil -:t f:t *:t <:t author:nil
+#+OPTIONS:   H:2 num:t toc:t \n:nil @:t ::t |:t ^:nil -:t f:t *:t <:t author:nil
 #+OPTIONS:   TeX:t LaTeX:t skip:nil d:nil todo:t pri:nil tags:not-in-toc
 #+INFOJS_OPT: view:nil toc:nil ltoc:t mouse:underline buttons:0 path:http://orgmode.org/org-info.js
 #+EXPORT_SELECT_TAGS: export
@@ -26,16 +26,17 @@
 #+BEAMER_THEME: Madrid
 #+BEAMER_COLOR_THEME: wolverine
 #+STARTUP: beamer
+#+BEAMER_FRAME_LEVEL: 2
 
 # To generate notes pages only:
-#+LaTeX_CLASS_OPTIONS: [handout]
-#+LaTeX_HEADER: \setbeameroption{show only notes}
-#+LaTeX_HEADER: \usepackage{pgfpages}
-#+LaTeX_HEADER: \pgfpagesuselayout{2 on 1}[letterpaper,border shrink=5mm]
+# +LaTeX_CLASS_OPTIONS: [handout]
+# +LaTeX_HEADER: \setbeameroption{show only notes}
+# +LaTeX_HEADER: \usepackage{pgfpages}
+# +LaTeX_HEADER: \pgfpagesuselayout{2 on 1}[letterpaper,border shrink=5mm]
 
 # For normal presentation output:
-# +LaTeX_CLASS_OPTIONS: [bigger]
-# +LaTeX_HEADER: \setbeamertemplate{navigation symbols}{}%remove navigation symbols
+#+LaTeX_CLASS_OPTIONS: [bigger]
+#+LaTeX_HEADER: \setbeamertemplate{navigation symbols}{}%remove navigation symbols
 
 # syntax highlighting colors
 #+LaTeX_HEADER: \definecolor{sh_comment}{RGB}{64,128,128}
@@ -43,7 +44,8 @@
 #+LaTeX_HEADER: \newcommand{\reducedstrut}{\vrule width 0pt height .9\ht\strutbox depth .9\dp\strutbox\relax}
 #+LaTeX_HEADER: \newcommand{\hilight}[1]{\begingroup\setlength{\fboxsep}{0pt}\colorbox{sh_hilight}{\reducedstrut#1\/}\endgroup}
 
-* Battle.net infrastructure
+* A bit about Battle.net
+** Battle.net infrastructure
 - About 325,000 lines of C++
   - Servers + client libraries
 - "Battle.net Game Service"
@@ -52,7 +54,7 @@
   - Matchmaking (cooperative/competitive)
   - Achievements/profiles
 
-** notes                                                          :B_noteNH:
+*** notes                                                        :B_noteNH:
 :PROPERTIES:
 :BEAMER_env: noteNH
 :END:
@@ -60,7 +62,7 @@
 - Game service vs Battle.net umbrella.
 - Define terms.
 
-* Battle.net is highly...
+** Battle.net is highly...
 - Distributed
 - Asynchronous
 - Configured
@@ -70,7 +72,7 @@
   - composition
   - value-oriented
 
-** notes                                                          :B_noteNH:
+*** notes                                                        :B_noteNH:
 :PROPERTIES:
 :BEAMER_env: noteNH
 :END:
@@ -79,20 +81,20 @@
 - Lots of configuration read at startup time from git repo.
 - Code is pretty good, but size => faults occur.
 
-* A familiar situation
+** A familiar situation
 - No practice at unit testing
 - Large project with many moving parts
 - Mature lower level libraries
 - New code (features) added at an alarming rate
 
-** notes                                                          :B_noteNH:
+*** notes                                                        :B_noteNH:
 :PROPERTIES:
 :BEAMER_env: noteNH
 :END:
 - A familiar situation for me and my colleagues.
 - Game industry is not accustomed to unit testing.
 
-* What's typically well-tested?
+** What's typically well-tested?
 - UTF-8 string conversion
 - String interpolation
 - URL parsing/decomposition
@@ -103,14 +105,14 @@
 These things are "easy mode" for tests.
 \end{center}
 
-** notes                                                          :B_noteNH:
+*** notes                                                        :B_noteNH:
 :PROPERTIES:
 :BEAMER_env: noteNH
 :END:
 - Usually well-tested.
 - Not worth thinking about edge cases - can use off-the-shelf tests (eg UTF-8).
 
-* Not-so-well tested?
+** Not-so-well tested?
 - Matchmaking algorithms
 - Queueing/Load balancing algorithms
 - Other high-dependency, asynchronous, "large" code
@@ -120,16 +122,17 @@ These things are "easy mode" for tests.
 These things are harder to test. Where to start?
 \end{center}
 
-** notes                                                          :B_noteNH:
+*** notes                                                        :B_noteNH:
 :PROPERTIES:
 :BEAMER_env: noteNH
 :END:
 - This is what I started to think about.
 - I read Kent Beck and Bob Martin. I watched Misko Hevery.
 - Conclusion: we aren't practised at testing.
-- Need to practise!
+- Need to practise - use TDD
+- Extend unit testing framework as I go
 
-* No magic bullet
+** No magic bullet
 - I wrote a lot of mocks
 - Set up a lot of data structures for test
 - A lot of testing code to keep bug-free
@@ -137,7 +140,7 @@ These things are harder to test. Where to start?
   - better code structure
   - useful techniques
 
-** notes                                                          :B_noteNH:
+*** notes                                                        :B_noteNH:
 :PROPERTIES:
 :BEAMER_env: noteNH
 :END:
@@ -145,12 +148,14 @@ These things are harder to test. Where to start?
 - Things were messy for a while. (They even shipped messy.)
 - But I found some useful things to share.
 
-* Monolithic classes
+* Testing legacy code
+** Monolithic classes
 \begin{center}
-Problem 1: Getting started testing huge legacy classes
+Problem 1: Getting started testing huge legacy classes.\\[2\baselineskip]
+(What idiot wrote this code? \footnotesize{Oh, it was me, 3 months ago...})
 \end{center}
 
-** notes                                                          :B_noteNH:
+*** notes                                                        :B_noteNH:
 :PROPERTIES:
 :BEAMER_env: noteNH
 :END:
@@ -158,9 +163,9 @@ Problem 1: Getting started testing huge legacy classes
 - and they do complex things
 - and we need to test them
 
-* Exhibit A: hard to test
+** Exhibit A: hard to test
 
-** block                                                         :B_onlyenv:
+*** block                                                       :B_onlyenv:
 :PROPERTIES:
 :BEAMER_env: onlyenv
 :BEAMER_act: <1>
@@ -181,7 +186,7 @@ public:\\
 \string};}
 \end{scriptsize}
 
-** block                                                         :B_onlyenv:
+*** block                                                       :B_onlyenv:
 :PROPERTIES:
 :BEAMER_env: onlyenv
 :BEAMER_act: <2>
@@ -202,7 +207,7 @@ public:\\
 \string};}
 \end{scriptsize}
 
-** block                                                         :B_onlyenv:
+*** block                                                       :B_onlyenv:
 :PROPERTIES:
 :BEAMER_env: onlyenv
 :BEAMER_act: <3>
@@ -223,7 +228,7 @@ public:\\
 \string};}
 \end{scriptsize}
 
-** notes                                                          :B_noteNH:
+*** notes                                                        :B_noteNH:
 :PROPERTIES:
 :BEAMER_env: noteNH
 :END:
@@ -238,9 +243,9 @@ public:\\
   1. Lots of configuration.
   1. These things are onerous to mock.
 
-* Exhibit B: hard to test
+** Exhibit B: hard to test
 
-** block                                                         :B_onlyenv:
+*** block                                                       :B_onlyenv:
 :PROPERTIES:
 :BEAMER_env: onlyenv
 :BEAMER_act: <1>
@@ -257,7 +262,7 @@ public:\\
 \string};}
 \end{scriptsize}
 
-** block                                                         :B_onlyenv:
+*** block                                                       :B_onlyenv:
 :PROPERTIES:
 :BEAMER_env: onlyenv
 :BEAMER_act: <2>
@@ -274,7 +279,7 @@ public:\\
 \string};}
 \end{scriptsize}
 
-** block                                                         :B_onlyenv:
+*** block                                                       :B_onlyenv:
 :PROPERTIES:
 :BEAMER_env: onlyenv
 :BEAMER_act: <3>
@@ -290,10 +295,10 @@ public:\\
 \string};\\[2\baselineskip]}
 \end{scriptsize}
 \begin{center}
-In hindsight, this was a mistake
+In hindsight, this was a mistake...
 \end{center}
 
-** notes                                                          :B_noteNH:
+*** notes                                                        :B_noteNH:
 :PROPERTIES:
 :BEAMER_env: noteNH
 :END:
@@ -304,12 +309,12 @@ In hindsight, this was a mistake
 - Constructor args have wide interfaces
 - ServerHelper legitimized the pattern of coupling IO/RPC and functionality
 
-* Patterns inimical to testing
+** Patterns inimical to testing
 - Lack of dependency injection
 - Doing work in constructors (cf RAII)
 - Wide interfaces (especially when passed to constructors)
 
-** notes                                                          :B_noteNH:
+*** notes                                                        :B_noteNH:
 :PROPERTIES:
 :BEAMER_env: noteNH
 :END:
@@ -318,8 +323,8 @@ In hindsight, this was a mistake
 - RAII is bad: testable things shouldn't own resources
 - Wide interfaces to construction are bad
 
-* Class structure for testing
-** only                                                          :B_onlyenv:
+** Class structure for testing
+*** only                                                        :B_onlyenv:
 :PROPERTIES:
 :BEAMER_env: onlyenv
 :BEAMER_act: <1>
@@ -330,7 +335,7 @@ In hindsight, this was a mistake
 [[./diag1.pdf]]
 #+end_center
 
-** only                                                          :B_onlyenv:
+*** only                                                        :B_onlyenv:
 :PROPERTIES:
 :BEAMER_env: onlyenv
 :BEAMER_act: <2>
@@ -341,7 +346,7 @@ In hindsight, this was a mistake
 [[./diag2.pdf]]
 #+end_center
 
-** notes                                                          :B_noteNH:
+*** notes                                                        :B_noteNH:
 :PROPERTIES:
 :BEAMER_env: noteNH
 :END:
@@ -353,12 +358,12 @@ In hindsight, this was a mistake
   - Ruthlessly inject dependencies
 - Good news: this is quite easy to apply
 
-* Example: Queueing for games
+** Example: Queueing for games
 #+begin_center
 [[./diag3.pdf]]
 #+end_center
 
-** notes                                                          :B_noteNH:
+*** notes                                                        :B_noteNH:
 :PROPERTIES:
 :BEAMER_env: noteNH
 :END:
@@ -367,8 +372,8 @@ In hindsight, this was a mistake
 - Server capacity, link capacity. KR/TW problem.
 - Rate limiting even in the presence of adequate server capacity.
 
-* Queueing for games
-** block                                                   :B_ignoreheading:
+** Queueing for games
+*** block                                                 :B_ignoreheading:
 :PROPERTIES:
 :BEAMER_env: ignoreheading
 :END:
@@ -377,7 +382,7 @@ In hindsight, this was a mistake
 \hrule
 \end{center}
 
-** GameQueueBase                                                 :B_onlyenv:
+*** GameQueueBase                                               :B_onlyenv:
 :PROPERTIES:
 :BEAMER_env: onlyenv
 :BEAMER_act: <1>
@@ -400,7 +405,7 @@ public:\\
 \string};\\}
 \end{scriptsize}
 
-** GameQueueBase                                                 :B_onlyenv:
+*** GameQueueBase                                               :B_onlyenv:
 :PROPERTIES:
 :BEAMER_env: onlyenv
 :BEAMER_act: <2>
@@ -423,7 +428,7 @@ public:\\
 \string};\\}
 \end{scriptsize}
 
-** GameQueueBase                                                 :B_onlyenv:
+*** GameQueueBase                                               :B_onlyenv:
 :PROPERTIES:
 :BEAMER_env: onlyenv
 :BEAMER_act: <3>
@@ -446,7 +451,7 @@ public:\\
 \string};\\}
 \end{scriptsize}
 
-** notes                                                          :B_noteNH:
+*** notes                                                        :B_noteNH:
 :PROPERTIES:
 :BEAMER_env: noteNH
 :END:
@@ -457,13 +462,13 @@ public:\\
   - server pool: a couple of functions for server capacity information
 - Interface not cluttered with other concerns: just queueing stuff.
 
-* Queueing for games
-** only                                                           :B_onlyenv:
+** Queueing for games
+*** only                                                        :B_onlyenv:
 :PROPERTIES:
 :BEAMER_env: onlyenv
 :BEAMER_act: <1>
 :END:
-*** block                                                 :B_ignoreheading:
+**** block                                               :B_ignoreheading:
 :PROPERTIES:
 :BEAMER_env: ignoreheading
 :END:
@@ -472,7 +477,7 @@ public:\\
 \hrule
 \end{center}
 
-*** GameQueueImpl                                         :B_ignoreheading:
+**** GameQueueImpl                                       :B_ignoreheading:
 :PROPERTIES:
 :BEAMER_env: ignoreheading
 :END:
@@ -495,12 +500,12 @@ public:\\
 \string};\\}
 \end{scriptsize}
 
-** only                                                           :B_onlyenv:
+*** only                                                        :B_onlyenv:
 :PROPERTIES:
 :BEAMER_env: onlyenv
 :BEAMER_act: <2>
 :END:
-*** block                                                 :B_ignoreheading:
+**** block                                               :B_ignoreheading:
 :PROPERTIES:
 :BEAMER_env: ignoreheading
 :END:
@@ -509,7 +514,7 @@ public:\\
 \hrule
 \end{center}
 
-*** GameQueueImpl                                         :B_ignoreheading:
+**** GameQueueImpl                                       :B_ignoreheading:
 :PROPERTIES:
 :BEAMER_env: ignoreheading
 :END:
@@ -532,12 +537,12 @@ public:\\
 \string};\\}
 \end{scriptsize}
 
-** only                                                           :B_onlyenv:
+*** only                                                        :B_onlyenv:
 :PROPERTIES:
 :BEAMER_env: onlyenv
 :BEAMER_act: <3>
 :END:
-*** block                                                 :B_ignoreheading:
+**** block                                               :B_ignoreheading:
 :PROPERTIES:
 :BEAMER_env: ignoreheading
 :END:
@@ -546,7 +551,7 @@ public:\\
 \hrule
 \end{center}
 
-*** GameQueueImpl                                         :B_ignoreheading:
+**** GameQueueImpl                                       :B_ignoreheading:
 :PROPERTIES:
 :BEAMER_env: ignoreheading
 :END:
@@ -569,12 +574,12 @@ public:\\
 \string};\\}
 \end{scriptsize}
 
-** only                                                           :B_onlyenv:
+*** only                                                        :B_onlyenv:
 :PROPERTIES:
 :BEAMER_env: onlyenv
 :BEAMER_act: <4>
 :END:
-*** block                                                   :B_ignoreheading:
+**** block                                               :B_ignoreheading:
 :PROPERTIES:
 :BEAMER_env: ignoreheading
 :END:
@@ -583,7 +588,7 @@ public:\\
 \hrule
 \end{center}
 
-*** GameQueueImpl                                         :B_ignoreheading:
+**** GameQueueImpl                                       :B_ignoreheading:
 :PROPERTIES:
 :BEAMER_env: ignoreheading
 :END:
@@ -605,12 +610,12 @@ public:\\
 \string};\\}
 \end{scriptsize}
 
-** only                                                           :B_onlyenv:
+*** only                                                        :B_onlyenv:
 :PROPERTIES:
 :BEAMER_env: onlyenv
 :BEAMER_act: <5>
 :END:
-*** block                                                   :B_ignoreheading:
+**** block                                               :B_ignoreheading:
 :PROPERTIES:
 :BEAMER_env: ignoreheading
 :END:
@@ -619,7 +624,7 @@ public:\\
 \hrule
 \end{center}
 
-*** GameQueueImpl                                         :B_ignoreheading:
+**** GameQueueImpl                                       :B_ignoreheading:
 :PROPERTIES:
 :BEAMER_env: ignoreheading
 :END:
@@ -641,7 +646,7 @@ public:\\
 \string};\\}
 \end{scriptsize}
 
-** notes                                                          :B_noteNH:
+*** notes                                                        :B_noteNH:
 :PROPERTIES:
 :BEAMER_env: noteNH
 :END:
@@ -654,12 +659,12 @@ public:\\
 - Some is dependency-injected to control the logic
   - keep base testable with as little setup as poss
 
-* Example: Matchmaking
+** Example: Matchmaking
 #+begin_center
 [[./diag4.pdf]]
 #+end_center
 
-** notes                                                          :B_noteNH:
+*** notes                                                        :B_noteNH:
 :PROPERTIES:
 :BEAMER_env: noteNH
 :END:
@@ -671,9 +676,9 @@ public:\\
   - matching by attributes
 - game factory implements matchmaking strategy
 
-* Matchmaking
+** Matchmaking
 
-** block                                                   :B_ignoreheading:
+*** block                                                 :B_ignoreheading:
 :PROPERTIES:
 :BEAMER_env: ignoreheading
 :END:
@@ -682,7 +687,7 @@ public:\\
 \hrule
 \end{center}
 
-** GameFactory                                                   :B_onlyenv:
+*** GameFactory                                                 :B_onlyenv:
 :PROPERTIES:
 :BEAMER_env: onlyenv
 :BEAMER_act: <1>
@@ -703,7 +708,7 @@ public:\\
 \string};\\}
 \end{scriptsize}
 
-** GameFactory                                                   :B_onlyenv:
+*** GameFactory                                                 :B_onlyenv:
 :PROPERTIES:
 :BEAMER_env: onlyenv
 :BEAMER_act: <2>
@@ -724,7 +729,7 @@ public:\\
 \string};\\}
 \end{scriptsize}
 
-** GameFactory                                                   :B_onlyenv:
+*** GameFactory                                                 :B_onlyenv:
 :PROPERTIES:
 :BEAMER_env: onlyenv
 :BEAMER_act: <3>
@@ -745,7 +750,7 @@ public:\\
 \string};\\}
 \end{scriptsize}
 
-** notes                                                          :B_noteNH:
+*** notes                                                        :B_noteNH:
 :PROPERTIES:
 :BEAMER_env: noteNH
 :END:
@@ -754,8 +759,8 @@ public:\\
   - Constructor leaves object initialised properly
 - Just the MM logic in factory
 
-* Matchmaking
-** block                                                   :B_ignoreheading:
+** Matchmaking
+*** block                                                 :B_ignoreheading:
 :PROPERTIES:
 :BEAMER_env: ignoreheading
 :END:
@@ -764,7 +769,7 @@ public:\\
 \hrule
 \end{center}
 
-** GameMasterImpl                                                :B_onlyenv:
+*** GameMasterImpl                                              :B_onlyenv:
 :PROPERTIES:
 :BEAMER_env: onlyenv
 :BEAMER_act: <1>
@@ -788,7 +793,7 @@ public:\\
 \string};\\}
 \end{scriptsize}
 
-** GameMasterImpl                                                :B_onlyenv:
+*** GameMasterImpl                                              :B_onlyenv:
 :PROPERTIES:
 :BEAMER_env: onlyenv
 :BEAMER_act: <2>
@@ -812,7 +817,7 @@ public:\\
 \string};\\}
 \end{scriptsize}
 
-** GameMasterImpl                                                :B_onlyenv:
+*** GameMasterImpl                                              :B_onlyenv:
 :PROPERTIES:
 :BEAMER_env: onlyenv
 :BEAMER_act: <3>
@@ -836,7 +841,7 @@ public:\\
 \string};\\}
 \end{scriptsize}
 
-** notes                                                          :B_noteNH:
+*** notes                                                        :B_noteNH:
 :PROPERTIES:
 :BEAMER_env: noteNH
 :END:
@@ -844,7 +849,7 @@ public:\\
 - config injection
 - rpc interface
 
-* A successful pattern
+** A successful pattern
 - Decouple logic from other concerns
   - Dependency injection for config etc
   - Makes the logic testable
@@ -852,7 +857,7 @@ public:\\
   - Just apply the inheritance pattern
   - Some testing beats no testing
 
-** notes                                                          :B_noteNH:
+*** notes                                                        :B_noteNH:
 :PROPERTIES:
 :BEAMER_env: noteNH
 :END:
@@ -863,30 +868,32 @@ public:\\
   - once you have something testable, you can build on it
   - tested code is easier to refactor even if it starts out ugly
 
-* Testable classes
+** Testable classes
 \begin{center}
 Dependency injection is probably the biggest factor affecting whether or not code \emph{is testable at all}.\\[2\baselineskip]
 Even with DI, classes are \emph{onerous to test} unless constructors take few arguments, using narrow interfaces.
 \end{center}
 
-** notes                                                          :B_noteNH:
+*** notes                                                        :B_noteNH:
 :PROPERTIES:
 :BEAMER_env: noteNH
 :END:
 - A practical guideline
 
-* Testing for scalability
+* Testing scalability (I)
+** Testing for scalability
 \begin{center}
-Problem 2: Confidence in my code's ability to scale
+Problem 2: Confidence in my code's ability to scale.\\[2\baselineskip]
+(I don't want a 3am call from devops.)
 \end{center}
 
-** notes                                                          :B_noteNH:
+*** notes                                                        :B_noteNH:
 :PROPERTIES:
 :BEAMER_env: noteNH
 :END:
 - The code has to work when a million players come along
 
-* Testing Performance/Efficiency
+** Testing Performance/Efficiency
 - Different solutions for
   - thousands (performance)
   - millions (performance + algorithms)
@@ -894,7 +901,7 @@ Problem 2: Confidence in my code's ability to scale
 - Battle.net's working sets are in the millions
   - e.g. matchmaking
 
-** notes                                                          :B_noteNH:
+*** notes                                                        :B_noteNH:
 :PROPERTIES:
 :BEAMER_env: noteNH
 :END:
@@ -910,21 +917,21 @@ Problem 2: Confidence in my code's ability to scale
   - but algorithms are also important
   - can run on dev machines but without scalable data sets
 
-* Problems in million-land
+** Problems in million-land
 - Computations can run on a single machine
 - Data structures are important to performance
   - Caching concerns, optimizations can get you 100x
   - But they can't get you 100,000x
 - Algorithms are important to efficiency
 
-** notes                                                          :B_noteNH:
+*** notes                                                        :B_noteNH:
 :PROPERTIES:
 :BEAMER_env: noteNH
 :END:
 - Perf only gets you so far
 - You need algorithms to avoid blowup at scale
 
-* Testing for performance
+** Testing for performance
 - Timed tests are easy, not so useful
 - My machine is a Windows desktop
 - Production machine is a CentOS blade
@@ -932,7 +939,7 @@ Problem 2: Confidence in my code's ability to scale
   - compare times when optimizing
   - can't tell me if code is fast enough in an absolute sense
 
-** notes                                                          :B_noteNH:
+*** notes                                                        :B_noteNH:
 :PROPERTIES:
 :BEAMER_env: noteNH
 :END:
@@ -940,13 +947,13 @@ Problem 2: Confidence in my code's ability to scale
 - This can give me some gross idea of optimizations
 - It's still hard to do things properly (my desktop isn't the production hardware)
 
-* Efficiency: easy to lose
+** Efficiency: easy to lose
 - Team of engineers hacking away on features
 - \(\mathnormal{O(log\, n)}\) or less is required
 - Easy to accidentally turn it into \(\mathnormal{O(n)}\) (or worse)
 - I need a way to test for algorithmic efficiency
 
-** notes                                                          :B_noteNH:
+*** notes                                                        :B_noteNH:
 :PROPERTIES:
 :BEAMER_env: noteNH
 :END:
@@ -954,7 +961,7 @@ Problem 2: Confidence in my code's ability to scale
 - I was concerned about this
 - I want the computer to help enforce this
 
-* Testing for efficiency
+** Testing for efficiency
 - Run the same test with different sized inputs
 
 #+BEGIN_LaTeX
@@ -970,14 +977,14 @@ Problem 2: Confidence in my code's ability to scale
 \end{align*}
 #+END_LaTeX
 
-** notes                                                          :B_noteNH:
+*** notes                                                        :B_noteNH:
 :PROPERTIES:
 :BEAMER_env: noteNH
 :END:
 - empirical method
 - explain
 
-* Common cases
+** Common cases
 #+BEGIN_LaTeX
 \begin{align*}
 \mathnormal{O(1) \Rightarrow} & \mathnormal{\frac{T_2}{T_1} = 1} \\[0.5em]
@@ -988,13 +995,13 @@ Problem 2: Confidence in my code's ability to scale
 \end{align*}
 #+END_LaTeX
 
-** notes                                                          :B_noteNH:
+*** notes                                                        :B_noteNH:
 :PROPERTIES:
 :BEAMER_env: noteNH
 :END:
 - simple math to get figures for each bucket I care about
 
-* This sounds easy, but...
+** This sounds easy, but...
 - Timing is hard
   - sensitive to machine load
   - sensitive to caching effects (CPU/OS)
@@ -1003,20 +1010,22 @@ Problem 2: Confidence in my code's ability to scale
 - Somewhat careful choice of \(\mathnormal{k}\), \(\mathnormal{N}\)
   - I settled on (\(\mathnormal{N = 100, k = 32}\))
 
-** notes                                                          :B_noteNH:
+*** notes                                                        :B_noteNH:
 :PROPERTIES:
 :BEAMER_env: noteNH
 :END:
 - Statistical mitigation = run multiple times, discard outliers, average
+  - be clear: this is for machine effects
+  - multiple runs occur on the same data
 - constants need to be big enough to elicit the required effect
 - but small enough not to make the test slow
 - fast, high frequency timing function is desirable
 - The nice thing is that you don't need to run this optimized
   - optimization tends only to make things better
 
-* Different-sized inputs
+** Different-sized inputs
 
-** block                                                   :B_ignoreheading:
+*** block                                                 :B_ignoreheading:
 :PROPERTIES:
 :BEAMER_env: ignoreheading
 :END:
@@ -1026,7 +1035,7 @@ You can let the test make them...\\[1\baselineskip]
 \hrule
 \end{center}
 
-** Let the test make them                                        :B_onlyenv:
+*** Let the test make them                                      :B_onlyenv:
 :PROPERTIES:
 :BEAMER_env: onlyenv
 :BEAMER_act: <1>
@@ -1044,7 +1053,7 @@ auto sampleTime2 = test->Run(N * MULT);\\
 ...\\}
 \end{scriptsize}
 
-** Let the test make them                                        :B_onlyenv:
+*** Let the test make them                                      :B_onlyenv:
 :PROPERTIES:
 :BEAMER_env: onlyenv
 :BEAMER_act: <2>
@@ -1062,7 +1071,7 @@ test->Setup();\\
 ...\\}
 \end{scriptsize}
 
-** notes                                                          :B_noteNH:
+*** notes                                                        :B_noteNH:
 :PROPERTIES:
 :BEAMER_env: noteNH
 :END:
@@ -1072,7 +1081,7 @@ test->Setup();\\
 - Boilerplate in test code
 - It's not ideal...
 
-* Let the test make them?
+** Let the test make them?
 Result: a typical test
 - ~40 lines setup
 - ~10 lines timing
@@ -1080,20 +1089,33 @@ Result: a typical test
 - ~5 lines test macros
 Yuck.
 
-** notes                                                          :B_noteNH:
+*** notes                                                        :B_noteNH:
 :PROPERTIES:
 :BEAMER_env: noteNH
 :END:
 - I was working with objects that needed some setup
 - monolithic classes, remember?
 
-* Let the test make them?
+** Let the test make them?
 - It works well enough to give me confidence
   - Matchmaking won't blow up with a million players
 - So I lived with this for a while...
 - But I'm lazy, I don't want to maintain all this code
 
-** notes                                                          :B_noteNH:
+*** notes                                                        :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- Shipped with this because sometimes good enough is good enough
+
+* Property-based testing
+** Autogenerating test inputs
+\begin{center}
+Problem 3: Generating test input automatically.\\[2\baselineskip]
+(Laziness, Impatience, Hubris. Check.)
+\end{center}
+
+*** notes                                                        :B_noteNH:
 :PROPERTIES:
 :BEAMER_env: noteNH
 :END:
@@ -1103,7 +1125,7 @@ Yuck.
 - Or sufficiently powerful type systems
 - Explain property-based testing
 
-* Wish-driven development
+** Wish-driven development
 \begin{center}
 What I have\\[1\baselineskip]
 \hrule
@@ -1132,14 +1154,14 @@ What I want\\[1\baselineskip]
 \string}\\[1\baselineskip]}
 \end{scriptsize}
 
-** notes                                                           :B_noteNH:
+*** notes                                                        :B_noteNH:
 :PROPERTIES:
 :BEAMER_env: noteNH
 :END:
 - I need a way to generate values of "any type"
 - There are lots of things we already do for any type (eg print)
 
-* How to generate \texttt{TYPE}?
+** How to generate \texttt{TYPE}?
 \begin{center}
 Use a template, naturally\\[1\baselineskip]
 \hrule
@@ -1161,7 +1183,7 @@ struct Arbitrary\\
 And specialize...
 \end{center}
 
-** notes                                                          :B_noteNH:
+*** notes                                                        :B_noteNH:
 :PROPERTIES:
 :BEAMER_env: noteNH
 :END:
@@ -1169,7 +1191,7 @@ And specialize...
 - generation is some idea of how complex the generated thing is
 - and plumb through a random seed for reproducibility
 
-* Specializing \texttt{Arbitrary<T>}
+** Specializing \texttt{Arbitrary<T>}
 - Easy to write \texttt{Arbitrary<T>} for arithmetic types
 - Front-load likely edge cases
   - \texttt{0}
@@ -1177,20 +1199,20 @@ And specialize...
   - \texttt{numeric_limits<T>::max()}
 - Otherwise use uniform distribution over range
 
-** notes                                                          :B_noteNH:
+*** notes                                                        :B_noteNH:
 :PROPERTIES:
 :BEAMER_env: noteNH
 :END:
 - Explain
 - Generating arithmetic types is easy
 
-* Specializing \texttt{Arbitrary<T>}
+** Specializing \texttt{Arbitrary<T>}
 \begin{center}
 For \texttt{int}-like types\\[1\baselineskip]
 \hrule
 \end{center}
 
-** only                                                          :B_onlyenv:
+*** only                                                        :B_onlyenv:
 :PROPERTIES:
 :BEAMER_env: onlyenv
 :BEAMER_act: <1>
@@ -1214,7 +1236,7 @@ For \texttt{int}-like types\\[1\baselineskip]
 \string}\\[1\baselineskip]}
 \end{scriptsize}
 
-** only                                                          :B_onlyenv:
+*** only                                                        :B_onlyenv:
 :PROPERTIES:
 :BEAMER_env: onlyenv
 :BEAMER_act: <2>
@@ -1238,7 +1260,7 @@ For \texttt{int}-like types\\[1\baselineskip]
 \string}\\[1\baselineskip]}
 \end{scriptsize}
 
-** notes                                                          :B_noteNH:
+*** notes                                                        :B_noteNH:
 :PROPERTIES:
 :BEAMER_env: noteNH
 :END:
@@ -1247,21 +1269,21 @@ For \texttt{int}-like types\\[1\baselineskip]
 - For bools, it's trivial
 - For chars, generate printable values
 
-* Specializing \texttt{Arbitrary<T>}
+** Specializing \texttt{Arbitrary<T>}
 - Once we have \texttt{Arbitrary<T>} for fundamental types...
 - Easy to write for compound types
   - \texttt{vector<T>} etc
   - \texttt{generate} works in terms of \texttt{generate} on the contained type
   - ADT-like approach
 
-** notes                                                          :B_noteNH:
+*** notes                                                        :B_noteNH:
 :PROPERTIES:
 :BEAMER_env: noteNH
 :END:
 - Compound types are made of other types of course
 - Can be built up recursively
 
-* Specializing \texttt{Arbitrary<T>}
+** Specializing \texttt{Arbitrary<T>}
 \begin{center}
 For compound types (eg \texttt{vector})\\[1\baselineskip]
 \hrule
@@ -1280,7 +1302,7 @@ For compound types (eg \texttt{vector})\\[1\baselineskip]
 \string}\\[1\baselineskip]}
 \end{scriptsize}
 
-** notes                                                          :B_noteNH:
+*** notes                                                        :B_noteNH:
 :PROPERTIES:
 :BEAMER_env: noteNH
 :END:
@@ -1288,7 +1310,7 @@ For compound types (eg \texttt{vector})\\[1\baselineskip]
 - The idea of a "generation" deals with things like how long to make vectors, strings etc
 - Generate for compound type works recursively by generating the contained types
 
-* How to make a property test?
+** How to make a property test?
 \begin{center}
 What I want\\[1\baselineskip]
 \hrule
@@ -1304,7 +1326,7 @@ What I want\\[1\baselineskip]
 \string}\\[1\baselineskip]}
 \end{scriptsize}
 
-** notes                                                          :B_noteNH:
+*** notes                                                        :B_noteNH:
 :PROPERTIES:
 :BEAMER_env: noteNH
 :END:
@@ -1312,7 +1334,7 @@ What I want\\[1\baselineskip]
 - Now I needed to figure out how to deal with the test
 - Normally, tests don't have arguments
 
-* Test macros expand into functions
+** Test macros expand into functions
 \begin{center}
 Macro...\\[1\baselineskip]
 \hrule
@@ -1334,7 +1356,7 @@ Expands to...\\[1\baselineskip]
 \texttt{struct NonceStruct\\
 \string{\\
 \ \ ...\\
-\ \ bool operator()(const string\&);\\
+\ \ bool operator()(const string\& s);\\
 \string};\\
 bool NonceStruct::operator()(const string\& s)\\
 \string{\\
@@ -1342,20 +1364,20 @@ bool NonceStruct::operator()(const string\& s)\\
 \string}\\[1\baselineskip]}
 \end{scriptsize}
 
-** notes                                                          :B_noteNH:
+*** notes                                                        :B_noteNH:
 :PROPERTIES:
 :BEAMER_env: noteNH
 :END:
 - the macro instantiates a function object
 - I can discover the type of the operator() argument
 
-* Discover the type of the function argument
+** Discover the type of the function argument
 \begin{center}
 Simple \texttt{function_traits} template\\[1\baselineskip]
 \hrule
 \end{center}
 
-** only                                                          :B_onlyenv:
+*** only                                                        :B_onlyenv:
 :PROPERTIES:
 :BEAMER_env: onlyenv
 :BEAMER_act: <1>
@@ -1377,7 +1399,7 @@ struct function_traits<R(C::*)(A)>\\
 ...\\[1\baselineskip]}
 \end{scriptsize}
 
-** only                                                          :B_onlyenv:
+*** only                                                        :B_onlyenv:
 :PROPERTIES:
 :BEAMER_env: onlyenv
 :BEAMER_act: <2>
@@ -1399,7 +1421,7 @@ struct function_traits<\hilight{R(C::*)(A)}>\\
 ...\\[1\baselineskip]}
 \end{scriptsize}
 
-** only                                                          :B_onlyenv:
+*** only                                                        :B_onlyenv:
 :PROPERTIES:
 :BEAMER_env: onlyenv
 :BEAMER_act: <3>
@@ -1421,7 +1443,7 @@ struct function_traits<R(C::*)(A)>\\
 ...\\[1\baselineskip]}
 \end{scriptsize}
 
-** notes                                                          :B_noteNH:
+*** notes                                                        :B_noteNH:
 :PROPERTIES:
 :BEAMER_env: noteNH
 :END:
@@ -1437,13 +1459,13 @@ struct function_traits<R(C::*)(A)>\\
 - Single-function interface on a varying-type object
 - tailor-made for type erasure
 
-* Implement a \texttt{Run} function
+** Implement a \texttt{Run} function
 \begin{center}
 \texttt{Run()} for a property test\\[1\baselineskip]
 \hrule
 \end{center}
 
-** only                                                          :B_onlyenv:
+*** only                                                        :B_onlyenv:
 :PROPERTIES:
 :BEAMER_env: onlyenv
 :BEAMER_act: <1>
@@ -1464,7 +1486,7 @@ struct NonceStruct :\ public Test\\
 \string};\\[1\baselineskip]}
 \end{scriptsize}
 
-** only                                                          :B_onlyenv:
+*** only                                                        :B_onlyenv:
 :PROPERTIES:
 :BEAMER_env: onlyenv
 :BEAMER_act: <2>
@@ -1485,7 +1507,7 @@ struct NonceStruct :\ public Test\\
 \string};\\[1\baselineskip]}
 \end{scriptsize}
 
-** only                                                          :B_onlyenv:
+*** only                                                        :B_onlyenv:
 :PROPERTIES:
 :BEAMER_env: onlyenv
 :BEAMER_act: <3>
@@ -1506,7 +1528,7 @@ struct NonceStruct :\ public Test\\
 \string};\\[1\baselineskip]}
 \end{scriptsize}
 
-** notes                                                          :B_noteNH:
+*** notes                                                        :B_noteNH:
 :PROPERTIES:
 :BEAMER_env: noteNH
 :END:
@@ -1515,8 +1537,8 @@ struct NonceStruct :\ public Test\\
   - gets type-erased by Property
 - Property exposes check() which calls the type-erased operator()
 
-* \texttt{Property} type-erases \texttt{NonceStruct}
-** only                                                          :B_onlyenv:
+** \texttt{Property} type-erases \texttt{NonceStruct}
+*** only                                                        :B_onlyenv:
 :PROPERTIES:
 :BEAMER_env: onlyenv
 :BEAMER_act: <1>
@@ -1535,7 +1557,7 @@ struct NonceStruct :\ public Test\\
 \ \ struct InternalBase\\
 \ \ \string{\\
 \ \ \ \ virtual \textasciitilde{}InternalBase() \string{\string}\\
-\ \ \ \ virtual bool check(...) = 0;\\
+\ \ \ \ virtual bool check(...)\ = 0;\\
 \ \ \string};\\[1\baselineskip]
 \ \ template <typename U>\\
 \ \ struct Internal :\ public InternalBase\\
@@ -1544,7 +1566,7 @@ struct NonceStruct :\ public Test\\
 \string};\\[1\baselineskip]}
 \end{scriptsize}
 
-** only                                                          :B_onlyenv:
+*** only                                                        :B_onlyenv:
 :PROPERTIES:
 :BEAMER_env: onlyenv
 :BEAMER_act: <2>
@@ -1563,7 +1585,7 @@ struct NonceStruct :\ public Test\\
 \ \ struct InternalBase\\
 \ \ \string{\\
 \ \ \ \ virtual \textasciitilde{}InternalBase() \string{\string}\\
-\ \ \ \ \hilight{virtual bool check(...) = 0;}\\
+\ \ \ \ \hilight{virtual bool check(...)\ = 0;}\\
 \ \ \string};\\[1\baselineskip]
 \ \ template <typename U>\\
 \ \ struct Internal :\ public InternalBase\\
@@ -1572,7 +1594,7 @@ struct NonceStruct :\ public Test\\
 \string};\\[1\baselineskip]}
 \end{scriptsize}
 
-** only                                                          :B_onlyenv:
+*** only                                                        :B_onlyenv:
 :PROPERTIES:
 :BEAMER_env: onlyenv
 :BEAMER_act: <3>
@@ -1591,7 +1613,7 @@ struct NonceStruct :\ public Test\\
 \ \ struct InternalBase\\
 \ \ \string{\\
 \ \ \ \ virtual \textasciitilde{}InternalBase() \string{\string}\\
-\ \ \ \ virtual bool check(...) = 0;\\
+\ \ \ \ virtual bool check(...)\ = 0;\\
 \ \ \string};\\[1\baselineskip]
 \ \ \hilight{template <typename U>}\\
 \ \ \hilight{struct Internal :\ public InternalBase}\\
@@ -1600,7 +1622,7 @@ struct NonceStruct :\ public Test\\
 \string};\\[1\baselineskip]}
 \end{scriptsize}
 
-** notes                                                          :B_noteNH:
+*** notes                                                        :B_noteNH:
 :PROPERTIES:
 :BEAMER_env: noteNH
 :END:
@@ -1613,13 +1635,13 @@ struct NonceStruct :\ public Test\\
   that will be used with the call to Arbitrary::generate
 - let's look inside Internal
 
-* \texttt{Property} type-erases \texttt{NonceStruct}
+** \texttt{Property} type-erases \texttt{NonceStruct}
 \begin{center}
 Inside \texttt{Property}\\[1\baselineskip]
 \hrule
 \end{center}
 
-** only                                                          :B_onlyenv:
+*** only                                                        :B_onlyenv:
 :PROPERTIES:
 :BEAMER_env: onlyenv
 :BEAMER_act: <1>
@@ -1642,7 +1664,7 @@ struct Internal :\ public InternalBase\\
 \string};\\[1\baselineskip]}
 \end{scriptsize}
 
-** only                                                          :B_onlyenv:
+*** only                                                        :B_onlyenv:
 :PROPERTIES:
 :BEAMER_env: onlyenv
 :BEAMER_act: <2>
@@ -1665,19 +1687,19 @@ struct Internal :\ public InternalBase\\
 \string};\\[1\baselineskip]}
 \end{scriptsize}
 
-** notes                                                          :B_noteNH:
+*** notes                                                        :B_noteNH:
 :PROPERTIES:
 :BEAMER_env: noteNH
 :END:
 - check generates a value using Arbitrary::generate
 - passes it to the operator() of the NonceStruct
 
-* A short demo
+** A short demo
 \begin{center}
 (Demo)
 \end{center}
 
-* Now we have property tests
+** Now we have property tests
 - Macro expands \texttt{NonceStruct} with \texttt{operator()}
 - \texttt{Property} type-erases \texttt{NonceStruct}
 - \texttt{Property::Check} does:
@@ -1686,7 +1708,7 @@ struct Internal :\ public InternalBase\\
   - Call \texttt{NonceStruct::operator()}
 - And plumb through parameters like number of checks, random seed
 
-** notes                                                          :B_noteNH:
+*** notes                                                        :B_noteNH:
 :PROPERTIES:
 :BEAMER_env: noteNH
 :END:
@@ -1694,7 +1716,7 @@ struct Internal :\ public InternalBase\\
 - now we can use this ability to generate to power algorithmic tests
 - but before we get to that, shrink
 
-* Better checks for compound types
+** Better checks for compound types
 \begin{center}
 When a check fails, find a minimal failure case\\[1\baselineskip]
 \hrule
@@ -1716,7 +1738,7 @@ struct Arbitrary\\
 \texttt{shrink} returns a \texttt{vector} of "reduced" \texttt{T}'s
 \end{center}
 
-** notes                                                          :B_noteNH:
+*** notes                                                        :B_noteNH:
 :PROPERTIES:
 :BEAMER_env: noteNH
 :END:
@@ -1724,13 +1746,13 @@ struct Arbitrary\\
 - we can do more than just generate
 - shrink returns a vector of T's
 
-* Better checks for compound types
+** Better checks for compound types
 \begin{center}
 A simple binary search\\[1\baselineskip]
 \hrule
 \end{center}
 
-** only                                                          :B_onlyenv:
+*** only                                                        :B_onlyenv:
 :PROPERTIES:
 :BEAMER_env: onlyenv
 :BEAMER_act: <1>
@@ -1749,7 +1771,7 @@ A simple binary search\\[1\baselineskip]
 \string}\\[1\baselineskip]}
 \end{scriptsize}
 
-** only                                                          :B_onlyenv:
+*** only                                                        :B_onlyenv:
 :PROPERTIES:
 :BEAMER_env: onlyenv
 :BEAMER_act: <2>
@@ -1768,7 +1790,7 @@ A simple binary search\\[1\baselineskip]
 \string}\\[1\baselineskip]}
 \end{scriptsize}
 
-** block                                                   :B_ignoreheading:
+*** block                                                 :B_ignoreheading:
 :PROPERTIES:
 :BEAMER_env: ignoreheading
 :END:
@@ -1777,7 +1799,7 @@ A simple binary search\\[1\baselineskip]
 Call \texttt{shrink} repeatedly to find a minimal fail case
 \end{center}
 
-** notes                                                          :B_noteNH:
+*** notes                                                        :B_noteNH:
 :PROPERTIES:
 :BEAMER_env: noteNH
 :END:
@@ -1786,18 +1808,32 @@ Call \texttt{shrink} repeatedly to find a minimal fail case
 - for the containers, just use a binary search strategy
 - explain how the calling code will follow failing cases
 
-* Demo #2
+** Demo #2
 \begin{center}
 (Demo)
 \end{center}
 
-* Testing for efficiency (again)
+* Testing scalability (II)
+** Algorithmic test inputs
+\begin{center}
+Problem 2 revisited: Generating input for algorithmic tests.\\[2\baselineskip]
+(I like to delete code.)
+\end{center}
+
+*** notes                                                        :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- Now I can take my property test code and apply it to the algorithmic
+  complexity tests
+
+** Testing for efficiency (again)
 \begin{center}
 Now the computer can generate \(\mathnormal{N}\), \(\mathnormal{kN}\) values\\[1\baselineskip]
 \hrule
 \end{center}
 
-** \texttt{Arbitrary<T>::generate()}                             :B_onlyenv:
+*** \texttt{Arbitrary<T>::generate()}                           :B_onlyenv:
 :PROPERTIES:
 :BEAMER_env: onlyenv
 :BEAMER_act: <1>
@@ -1815,7 +1851,7 @@ Now the computer can generate \(\mathnormal{N}\), \(\mathnormal{kN}\) values\\[1
 \string}\\[1\baselineskip]}
 \end{scriptsize}
 
-** \texttt{Arbitrary<T>::generate_n()}                           :B_onlyenv:
+*** \texttt{Arbitrary<T>::generate_n()}                         :B_onlyenv:
 :PROPERTIES:
 :BEAMER_env: onlyenv
 :BEAMER_act: <2>
@@ -1833,7 +1869,7 @@ Now the computer can generate \(\mathnormal{N}\), \(\mathnormal{kN}\) values\\[1
 \string}\\[1\baselineskip]}
 \end{scriptsize}
 
-** block                                                   :B_ignoreheading:
+*** block                                                 :B_ignoreheading:
 :PROPERTIES:
 :BEAMER_env: ignoreheading
 :END:
@@ -1842,16 +1878,16 @@ Now the computer can generate \(\mathnormal{N}\), \(\mathnormal{kN}\) values\\[1
 Add \texttt{generate_n} as a tighter form of \texttt{generate}
 \end{center}
 
-** notes                                                          :B_noteNH:
+*** notes                                                        :B_noteNH:
 :PROPERTIES:
 :BEAMER_env: noteNH
 :END:
-- For algorithmic guarantees, we need to lock down a specific size
+- For algorithmic tests, we need to lock down a specific size
 - Otherwise generate_n works exactly the same as generate
 - the calling code doesn't need to follow failures
 - these tests are just for timing
 
-* Now I can write
+** Now I can write
 \begin{center}
 A sample complexity test\\[1\baselineskip]
 \hrule
@@ -1873,19 +1909,24 @@ And specialize \texttt{Arbitrary} for my own types as necessary\\
 Much less boilerplate to maintain
 \end{center}
 
-** notes                                                          :B_noteNH:
+*** notes                                                        :B_noteNH:
 :PROPERTIES:
 :BEAMER_env: noteNH
 :END:
 - can use O(1), O(log n), O(n), O(n log n), O(n^2)
 - if the test comes in at or under the specified order, that's a pass
+- specialize my own type generation:
+  - random for average case data
+  - bastard mode for worst case data
+  - for ranges
+  - unfortunately c++ has no newtype
 
-* Demo #3
+** Demo #3
 \begin{center}
 (Demo)
 \end{center}
 
-* Before and After
+** Before and After
 #+begin_src c++
 #+end_src
 \begin{columns}
@@ -2325,7 +2366,7 @@ PERFORDERTEST_WITH_LEVEL(CoopGameFactory, MatchPerf, test::ORDER_1, 1)
 
 \end{columns}
 
-** notes                                                          :B_noteNH:
+*** notes                                                        :B_noteNH:
 :PROPERTIES:
 :BEAMER_env: noteNH
 :END:
@@ -2335,7 +2376,21 @@ PERFORDERTEST_WITH_LEVEL(CoopGameFactory, MatchPerf, test::ORDER_1, 1)
 - refactor code made unnecessary by the new framework
 - ~80 lines -> ~20 lines
 
-* So that's where I am now
+* Future thoughts
+** The reward for good work is more work
+\begin{center}
+Status quo/future possibilities.\\[2\baselineskip]
+(People are never satisfied.)
+\end{center}
+
+*** notes                                                        :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- Arbitrary opens up new possibilities
+- Next slide is a roundup
+
+** Where I am now
 - Dependency injection (little work in constructors)
 - Separate logic from interaction (even in monolithic classes)
 - Regular tests for "normal, identified" cases
@@ -2343,15 +2398,35 @@ PERFORDERTEST_WITH_LEVEL(CoopGameFactory, MatchPerf, test::ORDER_1, 1)
 - Property-based tests for invariants
 - Algorithmic complexity tests for scalability confidence
 
-* The future?
+*** notes                                                        :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- regular tests are still good
+- property tests make you think harder
+- in practice, the efficiency bar for Battle.net efficiency is < O(n)
+
+** The future?
 - \texttt{Arbitrary} opens the door for fuzz testing?
 - Alternative walk strategies through the input space
   - Hilbert
   - Morton
   - etc
+- Using \texttt{Arbitrary} to find poorly-performing data (P99)
 - I'm still lazy; the computer isn't doing enough for me yet
 
-* Battle.net is still highly...
+*** notes                                                        :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- Fuzz testing is possible, but I didn't need it so much at the protocol level
+  - Protobufs have sum and product types now
+  - Illegal states can be unrepresentable
+- Exercise poor performance in a couple of ways
+  - Make tests do bad things
+  - Make Arbitrary generation give bad data
+
+** Battle.net is still highly...
 - Distributed
 - Asynchronous
 - Configured
@@ -2360,10 +2435,454 @@ PERFORDERTEST_WITH_LEVEL(CoopGameFactory, MatchPerf, test::ORDER_1, 1)
 
 \begin{center}
 But more parts of it are well-tested before they leave a developer's machine.\\[1\baselineskip]
-And I'm more confident changing code with a guarantee that correctness/efficiency/scalability won't be affected.
+And I'm more confident changing code with a safety net for correctness/efficiency/scalability.
 \end{center}
 
-* Thanks for listening
+** Thanks for listening
+\begin{center}
+\textit{Errors using inadequate data are much less\\
+than those using no data at all.}\\
+\hfill \footnotesize{- Charles Babbage}\\[2\baselineskip]
+C++14 code: \texttt{https://github.com/elbeno/testinator}\\[2\baselineskip]
+Me: \texttt{\href{mailto:bdeane@blizzard.com}{bdeane@blizzard.com}, \href{http://www.twitter.com/ben_deane}{@ben_deane}}
+\end{center}
+
+* Epilogue                                                       :B_appendix:
+:PROPERTIES:
+:BEAMER_env: appendix
+:END:
+\addtocounter{framenumber}{-1}
+
+** Epilogue: more on properties
+\begin{center}
+Cool, can you do multiple arguments?\\[1\baselineskip]
+\hrule
+\end{center}
+
+*** only                                                        :B_onlyenv:
+:PROPERTIES:
+:BEAMER_env: onlyenv
+:BEAMER_act: <1>
+:END:
+\begin{scriptsize}
+\texttt{DEF_PROPERTY(TestName, Suite, \hilight{const string\& s})\\
+\string{\\
+\ \ {\color{sh_comment}\textit{// do something with s\\
+\ \ // that should be true for any input}}\\
+\ \ ...\\
+\ \ return property_holds;\\
+\string}\\[1\baselineskip]}
+\end{scriptsize}
+
+*** only                                                        :B_onlyenv:
+:PROPERTIES:
+:BEAMER_env: onlyenv
+:BEAMER_act: <2>
+:END:
+\begin{scriptsize}
+\texttt{DEF_PROPERTY(TestName, Suite, \hilight{const string\& s, int i})\\
+\string{\\
+\ \ {\color{sh_comment}\textit{// do something with s, i\\
+\ \ // that should be true for any input}}\\
+\ \ ...\\
+\ \ return property_holds;\\
+\string}\\[1\baselineskip]}
+\end{scriptsize}
+
+*** notes                                                        :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- when people see me riding a unicycle, they ask if I can juggle at the same time
+
+* Epilogue                                                  :B_ignoreheading:
+:PROPERTIES:
+:BEAMER_env: ignoreheading
+:END:
+\addtocounter{framenumber}{-1}
+
+** DEF_PROPERTY uses \texttt{\_\_VA\_ARGS\_\_}
+\begin{scriptsize}
+\texttt{#define DEF_PROPERTY(NAME, SUITE, \hilight{...}) \textbackslash\\
+...\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textbackslash\\
+bool operator()(\hilight{\_\_VA\_ARGS\_\_})\\[1\baselineskip]
+DEF_PROPERTY(TestName, Suite, const string\& s, int i)\\
+\string{\\
+\ \ ...\\
+\string}}
+\end{scriptsize}
+
+\begin{center}
+Expands to...\\[1\baselineskip]
+\end{center}
+
+\begin{scriptsize}
+\texttt{struct NonceStruct\\
+\string{\\
+\ \ ...\\
+\ \ bool operator()(const string\& s, int i);\\
+\string};\\
+bool NonceStruct::operator()(const string\& s, int i)\\
+\string{\\
+\ \ ...\\
+\string}\\[1\baselineskip]}
+\end{scriptsize}
+
+*** notes                                                        :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- C++ has variadic macros in the standard now
+
+* Epilogue                                                  :B_ignoreheading:
+:PROPERTIES:
+:BEAMER_env: ignoreheading
+:END:
+\addtocounter{framenumber}{-1}
+
+** \texttt{function_traits} captures args in a tuple
+*** only                                                        :B_onlyenv:
+:PROPERTIES:
+:BEAMER_env: onlyenv
+:BEAMER_act: <1>
+:END:
+\begin{scriptsize}
+\texttt{template <typename R, typename...\ A>\\
+struct function_traits<R(A...)>\\
+\string{\\
+\ \ \hilight{using argTuple = std::tuple<std::decay_t<A>...>;}\\[1\baselineskip]
+\ \ {\color{sh_comment}\textit{// apply a function to a tuple of arguments}}\\
+\ \ template <typename F>\\
+\ \ static R apply(F\& f, const argTuple\& t)\\
+\ \ \string{\\
+\ \ \ \ return unpackApply(f, t, std::index_sequence_for<A...>());\\
+\ \ \string}\\[1\baselineskip]
+\ \ template <typename F, std::size_t...\ Is>\\
+\ \ static R unpackApply(F\& f, const argTuple\& t, std::index_sequence<Is...>)\\
+\ \ \string{\\
+\ \ \ \ return f(std::get<Is>(t)...);\\
+\ \ \string}\\
+\ \ ...\\
+\string}\\[1\baselineskip]}
+\end{scriptsize}
+
+*** only                                                        :B_onlyenv:
+:PROPERTIES:
+:BEAMER_env: onlyenv
+:BEAMER_act: <2>
+:END:
+\begin{scriptsize}
+\texttt{template <typename R, typename...\ A>\\
+struct function_traits<R(A...)>\\
+\string{\\
+\ \ using argTuple = std::tuple<std::decay_t<A>...>;\\[1\baselineskip]
+\ \ {\color{sh_comment}\textit{// apply a function to a tuple of arguments}}\\
+\ \ template <typename F>\\
+\ \ static R apply(F\& f, const argTuple\& t)\\
+\ \ \string{\\
+\ \ \ \ return unpackApply(f, t, \hilight{std::index_sequence_for<A...>()});\\
+\ \ \string}\\[1\baselineskip]
+\ \ template <typename F, std::size_t...\ Is>\\
+\ \ static R unpackApply(F\& f, const argTuple\& t, std::index_sequence<Is...>)\\
+\ \ \string{\\
+\ \ \ \ return \hilight{f(std::get<Is>(t)...)};\\
+\ \ \string}\\
+\ \ ...\\
+\string}\\[1\baselineskip]}
+\end{scriptsize}
+
+*** notes                                                        :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- I was surprised how easy it was to apply a type transformation
+- This is basically apply from the library fundamentals TS
+ - But without the forwarding references
+
+* Epilogue                                                  :B_ignoreheading:
+:PROPERTIES:
+:BEAMER_env: ignoreheading
+:END:
+\addtocounter{framenumber}{-1}
+
+** Shrinking tuples
+- All property tests effectively take tuples as arguments
+- So I need a way to shrink tuples
+- First, think about pair
+  - shrink first -> vector
+  - shrink second -> vector
+  - cartesian product of vectors?
+
+*** notes                                                        :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- tuples were a relatively late addition
+- at first I didn't implement shrink very well
+- I went back to pair and I had a comment there
+- cartesian product not necessary because of machinery
+- N+M solution
+
+* Epilogue                                                  :B_ignoreheading:
+:PROPERTIES:
+:BEAMER_env: ignoreheading
+:END:
+\addtocounter{framenumber}{-1}
+
+** Shrinking pairs
+*** only                                                        :B_onlyenv:
+:PROPERTIES:
+:BEAMER_env: onlyenv
+:BEAMER_act: <1>
+:END:
+\begin{scriptsize}
+\texttt{static std::vector<std::pair<T1, T2>{}> shrink(const std::pair<T1, T2>\& p)\\
+\string{\\
+\ \ std::vector<std::pair<T1, T2>{}> ret\string{\string};\\[1\baselineskip]
+\ \ {\color{sh_comment}\textit{// shrink the first}}\\
+\ \ auto first_v = \hilight{Arbitrary<T1>::shrink(p.first)};\\
+\ \ for (T1\& e :\ first_v)\\
+\ \ \string{\\
+\ \ \ \ ret.push_back(\hilight{std::make_pair(std::move(e), p.second)});\\
+\ \ \string}\\[1\baselineskip]
+\ \ {\color{sh_comment}\textit{// shrink the second}}\\
+\ \ auto second_v = Arbitrary<T2>::shrink(p.second);\\
+\ \ for (T2\& e :\ second_v)\\
+\ \ \string{\\
+\ \ \ \ ret.push_back(std::make_pair(p.first, std::move(e)));\\
+\ \ \string}\\[1\baselineskip]
+\ \ return ret;\\
+\string}\\[1\baselineskip]}
+\end{scriptsize}
+
+*** only                                                        :B_onlyenv:
+:PROPERTIES:
+:BEAMER_env: onlyenv
+:BEAMER_act: <2>
+:END:
+\begin{scriptsize}
+\texttt{static std::vector<std::pair<T1, T2>{}> shrink(const std::pair<T1, T2>\& p)\\
+\string{\\
+\ \ std::vector<std::pair<T1, T2>{}> ret\string{\string};\\[1\baselineskip]
+\ \ {\color{sh_comment}\textit{// shrink the first}}\\
+\ \ auto first_v = Arbitrary<T1>::shrink(p.first);\\
+\ \ for (T1\& e :\ first_v)\\
+\ \ \string{\\
+\ \ \ \ ret.push_back(std::make_pair(std::move(e), p.second));\\
+\ \ \string}\\[1\baselineskip]
+\ \ {\color{sh_comment}\textit{// shrink the second}}\\
+\ \ auto second_v = \hilight{Arbitrary<T2>::shrink(p.second)};\\
+\ \ for (T2\& e :\ second_v)\\
+\ \ \string{\\
+\ \ \ \ ret.push_back(\hilight{std::make_pair(p.first, std::move(e))});\\
+\ \ \string}\\[1\baselineskip]
+\ \ return ret;\\
+\string}\\[1\baselineskip]}
+\end{scriptsize}
+
+*** notes                                                        :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- I thought about doing the cartesian product
+- like applicative on lists in haskell
+
+ghci> [(\(x,y) -> (1,y)), (\(x,y) -> (2,y))] <*> [(0,4),(0,5),(0,6)]
+
+[(1,4),(1,5),(1,6),(2,4),(2,5),(2,6)]
+
+- but the N+M solution works just fine
+- when you're done following the first shrink path, use the second
+
+* Epilogue                                                  :B_ignoreheading:
+:PROPERTIES:
+:BEAMER_env: ignoreheading
+:END:
+\addtocounter{framenumber}{-1}
+
+** From pairs to tuples
+- So I go to cppreference.com
+  - \texttt{make_tuple}
+  - \texttt{tie}
+  - \texttt{forward_as_tuple}
+  - \texttt{std::get}
+  - \texttt{tuple_cat}
+
+*** notes                                                        :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- I see these things (go through them)
+- tuple_cat? hmmm...
+
+* Epilogue                                                  :B_ignoreheading:
+:PROPERTIES:
+:BEAMER_env: ignoreheading
+:END:
+\addtocounter{framenumber}{-1}
+
+** From pairs to tuples
+- \texttt{first} is \texttt{std::get<0>()}
+  - or \texttt{tuple_head()}?
+- \texttt{second} is \texttt{tuple_tail()}
+- \texttt{make_pair} is \texttt{tuple_cons}
+  - put a head together with a tail
+
+\begin{center}
+\leavevmode\\[1\baselineskip]
+(Pretend these functions exist so we can write \texttt{shrink} for tuples)
+\end{center}
+
+*** notes                                                        :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- I've done some functional programming
+
+* Epilogue                                                  :B_ignoreheading:
+:PROPERTIES:
+:BEAMER_env: ignoreheading
+:END:
+\addtocounter{framenumber}{-1}
+
+** Shrinking tuples
+*** only                                                        :B_onlyenv:
+:PROPERTIES:
+:BEAMER_env: onlyenv
+:BEAMER_act: <1>
+:END:
+\begin{scriptsize}
+\texttt{static std::vector<std::tuple<Ts...>{}> shrink(const std::tuple<Ts...>\& t)\\
+\string{\\
+\ \ std::vector<std::tuple<Ts...>{}> ret\string{\string};\\[1\baselineskip]
+\ \ {\color{sh_comment}\textit{// shrink the head}}\\
+\ \ using H = std::decay_t<decltype(std::get<0>(t))>;\\
+\ \ auto head_v = Arbitrary<H>::shrink(\hilight{std::get<0>(t)});\\
+\ \ for (H\& e :\ head_v)\\
+\ \ \string{\\
+\ \ \ \ ret.push_back(\hilight{tuple_cons(std::move(e), tuple_tail(t))});\\
+\ \ \string}\\[1\baselineskip]
+\ \ ...\\[1\baselineskip]
+\ \ return ret;\\
+\string}\\[1\baselineskip]}
+\end{scriptsize}
+
+*** only                                                        :B_onlyenv:
+:PROPERTIES:
+:BEAMER_env: onlyenv
+:BEAMER_act: <2>
+:END:
+\begin{scriptsize}
+\texttt{static std::vector<std::tuple<Ts...>{}> shrink(const std::tuple<Ts...>\& t)\\
+\string{\\
+\ \ std::vector<std::tuple<Ts...>{}> ret\string{\string};\\[1\baselineskip]
+\ \ ...\\[1\baselineskip]
+\ \ {\color{sh_comment}\textit{// shrink the tail recursively}}\\
+\ \ using T = std::decay_t<decltype(tuple_tail(t))>;\\
+\ \ auto tail_v = Arbitrary<T>::shrink(\hilight{tuple_tail(t)});\\
+\ \ for (T\& e :\ tail_v)\\
+\ \ \string{\\
+\ \ \ \ ret.push_back(\hilight{tuple_cons(std::get<0>(t), std::move(e))});\\
+\ \ \string}\\[1\baselineskip]
+\ \ return ret;\\
+\string}\\[1\baselineskip]}
+\end{scriptsize}
+
+*** notes                                                        :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- pretend these exist
+- as with pairs, so with tuples
+- first shrink the head, cons them onto the tail
+- then shrink the tail (it will work recursively)
+- cons normal heads on to the shrunk tails
+
+* Epilogue                                                  :B_ignoreheading:
+:PROPERTIES:
+:BEAMER_env: ignoreheading
+:END:
+\addtocounter{framenumber}{-1}
+
+** \texttt{tuple_cons} and \texttt{tuple_tail}
+*** only                                                        :B_onlyenv:
+:PROPERTIES:
+:BEAMER_env: onlyenv
+:BEAMER_act: <1>
+:END:
+\begin{scriptsize}
+\texttt{template <typename U, typename T>\\
+auto tuple_cons(U\&\& u, T\&\& t)\\
+\string{\\
+\ \ using Tuple = std::decay_t<T>;\\
+\ \ return tuple_cons(std::forward<U>(u), std::forward<T>(t),\\
+\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \hilight{std::make_index_sequence<std::tuple_size<Tuple>::value>()});\\
+\string}\\[1\baselineskip]
+template <typename U, typename T, std::size_t ...Is>\\
+auto tuple_cons(U\&\& u, T\&\& t, std::index_sequence<Is...>)\\
+\string{\\
+\ \ return std::make_tuple(std::forward<U>(u),\\
+\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \hilight{std::get<Is>(std::forward<T>(t))...});\\
+\string}\\[1\baselineskip]}
+\end{scriptsize}
+
+*** only                                                        :B_onlyenv:
+:PROPERTIES:
+:BEAMER_env: onlyenv
+:BEAMER_act: <2>
+:END:
+\begin{scriptsize}
+\texttt{template <typename T>\\
+auto tuple_tail(T\&\& t)\\
+\string{\\
+\ \ using Tuple = std::decay_t<T>;\\
+\ \ return tuple_tail(std::forward<T>(t),\\
+\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ std::make_index_sequence<\\
+\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \hilight{std::tuple_size<Tuple>::value - 1}>());\\
+\string}\\[1\baselineskip]
+template <typename T, std::size_t ...Is>\\
+auto tuple_tail(T\&\& t, std::index_sequence<Is...>)\\
+\string{\\
+\ \ return std::make_tuple(std::get<\hilight{Is + 1}>(std::forward<T>(t))...);\\
+\string}\\[1\baselineskip]}
+\end{scriptsize}
+
+*** notes                                                        :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- tuple_cons is easy (explain)
+- tuple_tail (explain)
+- the power of tuple, variadic templates and index_sequence is great
+
+* Epilogue                                                  :B_ignoreheading:
+:PROPERTIES:
+:BEAMER_env: ignoreheading
+:END:
+\addtocounter{framenumber}{-1}
+
+** Shrinking tuples
+- Shrink head -> shrunken heads
+- Cons shrunken heads onto normal tail
+
+
+- Shrink tail -> shrunken tails
+- Cons normal head onto shrunken tails
+
+*** notes                                                        :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- easy
+- and that's really it
+
+* Epilogue                                                  :B_ignoreheading:
+:PROPERTIES:
+:BEAMER_env: ignoreheading
+:END:
+\addtocounter{framenumber}{-1}
+
+** Thanks for listening (again)
 \begin{center}
 C++14 code: \texttt{https://github.com/elbeno/testinator}\\[2\baselineskip]
 Me: \texttt{\href{mailto:bdeane@blizzard.com}{bdeane@blizzard.com}, \href{http://www.twitter.com/ben_deane}{@ben_deane}}
