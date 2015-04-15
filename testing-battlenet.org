@@ -66,7 +66,6 @@
 - Distributed
 - Asynchronous
 - Configured
-- Fault-prone
 - Architecture-varied
   - inheritance
   - composition
@@ -2430,7 +2429,6 @@ Status quo/future possibilities.\\[2\baselineskip]
 - Distributed
 - Asynchronous
 - Configured
-- Fault-prone
 - Architecture-varied
 
 \begin{center}
