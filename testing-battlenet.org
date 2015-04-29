@@ -3,7 +3,7 @@
 
 #+TITLE: Testing Battle.net
 #+BEAMER_HEADER: \subtitle{(Before deploying to millions of players)}
-#+DATE: 13th May 2015
+#+DATE: 12th May 2015
 #+AUTHOR: Ben Deane
 
 #+DESCRIPTION: C++-oriented solutions to testing Battle.net before deployment
@@ -2493,13 +2493,9 @@ Cool, can you do multiple arguments?\\[1\baselineskip]
 :END:
 - when people see me riding a unicycle, they ask if I can juggle at the same time
 
-* Epilogue                                                  :B_ignoreheading:
-:PROPERTIES:
-:BEAMER_env: ignoreheading
-:END:
-\addtocounter{framenumber}{-1}
 
 ** DEF_PROPERTY uses \texttt{\_\_VA\_ARGS\_\_}
+\addtocounter{framenumber}{-1}
 \begin{scriptsize}
 \texttt{#define DEF_PROPERTY(NAME, SUITE, \hilight{...}) \textbackslash\\
 ...\ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \ \textbackslash\\
@@ -2532,13 +2528,15 @@ bool NonceStruct::operator()(const string\& s, int i)\\
 :END:
 - C++ has variadic macros in the standard now
 
-* Epilogue                                                  :B_ignoreheading:
+
+* adjust                                                    :B_ignoreheading:
 :PROPERTIES:
 :BEAMER_env: ignoreheading
 :END:
 \addtocounter{framenumber}{-1}
 
 ** \texttt{function_traits} captures args in a tuple
+
 *** only                                                        :B_onlyenv:
 :PROPERTIES:
 :BEAMER_env: onlyenv
@@ -2597,13 +2595,9 @@ struct function_traits<R(A...)>\\
 - This is basically apply from the library fundamentals TS
  - But without the forwarding references
 
-* Epilogue                                                  :B_ignoreheading:
-:PROPERTIES:
-:BEAMER_env: ignoreheading
-:END:
-\addtocounter{framenumber}{-1}
 
 ** Shrinking tuples
+\addtocounter{framenumber}{-1}
 - All property tests effectively take tuples as arguments
 - So I need a way to shrink tuples
 - First, think about pair
@@ -2621,7 +2615,8 @@ struct function_traits<R(A...)>\\
 - cartesian product not necessary because of machinery
 - N+M solution
 
-* Epilogue                                                  :B_ignoreheading:
+
+* adjust                                                    :B_ignoreheading:
 :PROPERTIES:
 :BEAMER_env: ignoreheading
 :END:
@@ -2692,13 +2687,9 @@ ghci> [(\(x,y) -> (1,y)), (\(x,y) -> (2,y))] <*> [(0,4),(0,5),(0,6)]
 - but the N+M solution works just fine
 - when you're done following the first shrink path, use the second
 
-* Epilogue                                                  :B_ignoreheading:
-:PROPERTIES:
-:BEAMER_env: ignoreheading
-:END:
-\addtocounter{framenumber}{-1}
 
 ** From pairs to tuples
+\addtocounter{framenumber}{-1}
 - So I go to cppreference.com
   - \texttt{make_tuple}
   - \texttt{tie}
@@ -2713,13 +2704,9 @@ ghci> [(\(x,y) -> (1,y)), (\(x,y) -> (2,y))] <*> [(0,4),(0,5),(0,6)]
 - I see these things (go through them)
 - tuple_cat? hmmm...
 
-* Epilogue                                                  :B_ignoreheading:
-:PROPERTIES:
-:BEAMER_env: ignoreheading
-:END:
-\addtocounter{framenumber}{-1}
 
 ** From pairs to tuples
+\addtocounter{framenumber}{-1}
 - \texttt{first} is \texttt{std::get<0>()}
   - or \texttt{tuple_head()}?
 - \texttt{second} is \texttt{tuple_tail()}
@@ -2737,7 +2724,8 @@ ghci> [(\(x,y) -> (1,y)), (\(x,y) -> (2,y))] <*> [(0,4),(0,5),(0,6)]
 :END:
 - I've done some functional programming
 
-* Epilogue                                                  :B_ignoreheading:
+
+* adjust                                                    :B_ignoreheading:
 :PROPERTIES:
 :BEAMER_env: ignoreheading
 :END:
@@ -2796,7 +2784,8 @@ ghci> [(\(x,y) -> (1,y)), (\(x,y) -> (2,y))] <*> [(0,4),(0,5),(0,6)]
 - then shrink the tail (it will work recursively)
 - cons normal heads on to the shrunk tails
 
-* Epilogue                                                  :B_ignoreheading:
+
+* adjust                                                    :B_ignoreheading:
 :PROPERTIES:
 :BEAMER_env: ignoreheading
 :END:
@@ -2853,13 +2842,9 @@ auto tuple_tail(T\&\& t, std::index_sequence<Is...>)\\
 - tuple_tail (explain)
 - the power of tuple, variadic templates and index_sequence is great
 
-* Epilogue                                                  :B_ignoreheading:
-:PROPERTIES:
-:BEAMER_env: ignoreheading
-:END:
-\addtocounter{framenumber}{-1}
 
 ** Shrinking tuples
+\addtocounter{framenumber}{-1}
 - Shrink head -> shrunken heads
 - Cons shrunken heads onto normal tail
 
@@ -2874,13 +2859,9 @@ auto tuple_tail(T\&\& t, std::index_sequence<Is...>)\\
 - easy
 - and that's really it
 
-* Epilogue                                                  :B_ignoreheading:
-:PROPERTIES:
-:BEAMER_env: ignoreheading
-:END:
-\addtocounter{framenumber}{-1}
 
 ** Thanks for listening (again)
+\addtocounter{framenumber}{-1}
 \begin{center}
 C++14 code: \texttt{https://github.com/elbeno/testinator}\\[2\baselineskip]
 Me: \texttt{\href{mailto:bdeane@blizzard.com}{bdeane@blizzard.com}, \href{http://www.twitter.com/ben_deane}{@ben_deane}}
