@@ -2528,7 +2528,6 @@ bool NonceStruct::operator()(const string\& s, int i)\\
 :END:
 - C++ has variadic macros in the standard now
 
-
 * adjust                                                    :B_ignoreheading:
 :PROPERTIES:
 :BEAMER_env: ignoreheading
@@ -2614,7 +2613,6 @@ struct function_traits<R(A...)>\\
 - I went back to pair and I had a comment there
 - cartesian product not necessary because of machinery
 - N+M solution
-
 
 * adjust                                                    :B_ignoreheading:
 :PROPERTIES:
@@ -2724,7 +2722,6 @@ ghci> [(\(x,y) -> (1,y)), (\(x,y) -> (2,y))] <*> [(0,4),(0,5),(0,6)]
 :END:
 - I've done some functional programming
 
-
 * adjust                                                    :B_ignoreheading:
 :PROPERTIES:
 :BEAMER_env: ignoreheading
@@ -2783,7 +2780,6 @@ ghci> [(\(x,y) -> (1,y)), (\(x,y) -> (2,y))] <*> [(0,4),(0,5),(0,6)]
 - first shrink the head, cons them onto the tail
 - then shrink the tail (it will work recursively)
 - cons normal heads on to the shrunk tails
-
 
 * adjust                                                    :B_ignoreheading:
 :PROPERTIES:
