@@ -45,6 +45,17 @@
 #+LaTeX_HEADER: \newcommand{\reducedstrut}{\vrule width 0pt height .9\ht\strutbox depth .9\dp\strutbox\relax}
 #+LaTeX_HEADER: \newcommand{\hilight}[1]{\begingroup\setlength{\fboxsep}{0pt}\colorbox{sh_hilight}{\reducedstrut#1\/}\endgroup}
 
+* Cover notes                                                      :B_noteNH:
+:PROPERTIES:
+:BEAMER_env: noteNH
+:END:
+- This talk is about my experiences trying to make my code less likely to fail
+- This talk is a compendium of techniques: I think tech progresses best when it
+  can draw from a melting pot of techniques.
+- Testing is not so well established in C++ as in other languages.
+- But here are some techniques that I found useful.
+- Really solving 2 problems: testing legacy code and testing for scalability.
+
 * A bit about Battle.net
 ** Battle.net infrastructure
 - About 325,000 lines of C++
@@ -80,6 +91,10 @@
 - Almost everything asynchronous, callback-driven.
 - Lots of configuration read at startup time from git repo.
 - Code is pretty good, but size => faults occur.
+- composition vs inheritance, value semantics, generics
+- manual memory mgmt vs smart ptrs
+- callback chains vs coroutines
+- low data parallelism, high function concurrency, process level parallelism
 
 ** A familiar situation
 - No practice at unit testing
@@ -111,6 +126,8 @@ These things are "easy mode" for tests.
 :END:
 - Usually well-tested.
 - Not worth thinking about edge cases - can use off-the-shelf tests (eg UTF-8).
+- Well defined inputs/outputs
+- Applying unit tests to UTF8 conversion convinced me that they were useful
 
 ** Not-so-well tested?
 - Matchmaking algorithms
@@ -162,6 +179,7 @@ Problem 1: Getting started testing huge legacy classes.\\[2\baselineskip]
 - in a codebase this size, there are some classes that get large
 - and they do complex things
 - and we need to test them
+- Well architected is not the same as easy to test
 
 ** Exhibit A: hard to test
 
@@ -354,7 +372,7 @@ In hindsight, this was a mistake...
 - Use the split of logic vs interactions
   - Logic in base
   - Interactions in derived
-  - Derived has as few dependencies as possible
+  - Base has as few dependencies as possible
   - Ruthlessly inject dependencies
 - Good news: this is quite easy to apply
 
@@ -371,6 +389,7 @@ In hindsight, this was a mistake...
 - Manage multiple queues.
 - Server capacity, link capacity. KR/TW problem.
 - Rate limiting even in the presence of adequate server capacity.
+- cf Planning for failure, servers coming back up
 
 ** Queueing for games
 *** block                                                 :B_ignoreheading:
@@ -461,6 +480,7 @@ public:\\
   - callbacks (1-function interface)
   - server pool: a couple of functions for server capacity information
 - Interface not cluttered with other concerns: just queueing stuff.
+- Config injected, but when logic is separate, defaults are easy to provide
 
 ** Queueing for games
 *** only                                                        :B_onlyenv:
@@ -960,6 +980,7 @@ Problem 2: Confidence in my code's ability to scale.\\[2\baselineskip]
 - I work with good engineers, but we're all human
 - I was concerned about this
 - I want the computer to help enforce this
+- I recommend a long commute
 
 ** Testing for efficiency
 - Run the same test with different sized inputs
@@ -983,6 +1004,7 @@ Problem 2: Confidence in my code's ability to scale.\\[2\baselineskip]
 :END:
 - empirical method
 - explain
+- O(n) algo example omits lower order terms
 
 ** Common cases
 #+BEGIN_LaTeX
@@ -1018,6 +1040,7 @@ Problem 2: Confidence in my code's ability to scale.\\[2\baselineskip]
   - be clear: this is for machine effects
   - multiple runs occur on the same data
 - constants need to be big enough to elicit the required effect
+  - make smaller terms fade into noise
 - but small enough not to make the test slow
 - fast, high frequency timing function is desirable
 - The nice thing is that you don't need to run this optimized
@@ -1293,10 +1316,10 @@ For compound types (eg \texttt{vector})\\[1\baselineskip]
 \texttt{static vector<T> generate(size_t g, unsigned long int seed)\\
 \string{\\
 \ \ vector<T> v;\\
-\ \ size_t n = 10 * ((g / 100) + 1);\\
+\ \ \hilight{size_t n = 10 * ((g / 100) + 1);}\\
 \ \ v.reserve(n);\\
 \ \ std::generate_n(\\
-\ \ \ \ std::back_inserter(v), n, [\&] () \string{\\
+\ \ \ \ std::back_inserter(v), \hilight{n}, [\&] () \string{\\
 \ \ \ \ \ \ \hilight{return Arbitrary<T>::generate(g, seed++);} \string});\\
 \ \ return v;\\
 \string}\\[1\baselineskip]}
@@ -1845,7 +1868,7 @@ Now the computer can generate \(\mathnormal{N}\), \(\mathnormal{kN}\) values\\[1
 \ \ \hilight{size_t n = 10 * ((g / 100) + 1);}\\
 \ \ v.reserve(n);\\
 \ \ std::generate_n(\\
-\ \ \ \ std::back_inserter(v), n, [\&] () \string{\\
+\ \ \ \ std::back_inserter(v), \hilight{n}, [\&] () \string{\\
 \ \ \ \ \ \ return \hilight{Arbitrary<T>::generate}(g, seed++); \string});\\
 \ \ return v;\\
 \string}\\[1\baselineskip]}
@@ -1863,7 +1886,7 @@ Now the computer can generate \(\mathnormal{N}\), \(\mathnormal{kN}\) values\\[1
 \ \ {\color{sh_comment}\textit{// use g directly instead of a "loose" value}}\\
 \ \ v.reserve(g);\\
 \ \ std::generate_n(\\
-\ \ \ \ std::back_inserter(v), g, [\&] () \string{\\
+\ \ \ \ std::back_inserter(v), \hilight{g}, [\&] () \string{\\
 \ \ \ \ \ \ return \hilight{Arbitrary<T>::generate_n}(g, seed++); \string});\\
 \ \ return v;\\
 \string}\\[1\baselineskip]}
@@ -2863,119 +2886,3 @@ auto tuple_tail(T\&\& t, std::index_sequence<Is...>)\\
 C++14 code: \texttt{https://github.com/elbeno/testinator}\\[2\baselineskip]
 Me: \texttt{\href{mailto:bdeane@blizzard.com}{bdeane@blizzard.com}, \href{http://www.twitter.com/ben_deane}{@ben_deane}}
 \end{center}
-
-* Notes                                                              :B_note:
-:PROPERTIES:
-:BEAMER_env: note
-:END:
-
-- Introductory (short)
-- Brief overview of Battle.net server topology
-- The problem: moving beyond "easy-mode" unit testing of base libraries to testing real components with real interactions, IO, configuration, etc
-
-- Designing for testability
-- Separating and injecting dependencies
-- Test-friendly class hierarchy design
-- Identifying invariants, structuring logic for tests
-
-- Testing strategies (and the C++ that powers them)
-- Regular edge cases
-- Planning for and testing failure in a distributed system
-- Gaining confidence in scalability without incurring the cost of running a full environment*
-- Property-based testing*
-
-> ----------- REVIEW -----------
-> I'm alway trying to increase the testing-related content at C++Now.
->
-> In my opinion, C++ programmers don't talk and think enough about
-> testing and don't design for testability. It think that younger
-> languages were created after the TDD revolution and TDD is embedded in
-> their culture. This is not true for C++, so we have to play catchup.
-> Sessions like the one that Ben has submitted are step in that direction.
->
-> Ben's project was designed with testability in mind and was also one
-> with a particular testing challenge (testing at the required scale
-> isn't really possible). The lessons learned from this project will be
-> valuable to C++ developers.
->
->
-> ----------------------- REVIEW 2 ---------------------
-> PAPER: 3
-> TITLE: Testing Battle.net (before deploying to millions of players)
-> AUTHORS: Ben Deane
->
-> OVERALL EVALUATION: 3 (strong accept)
-> REVIEWER'S CONFIDENCE: 4 (high)
->
-> ----------- REVIEW -----------
-> Let's not waste time on commenting a keynote-quality submission.
->
->
-> ----------------------- REVIEW 3 ---------------------
-> PAPER: 3
-> TITLE: Testing Battle.net (before deploying to millions of players)
-> AUTHORS: Ben Deane
->
-> OVERALL EVALUATION: 3 (strong accept)
-> REVIEWER'S CONFIDENCE: 4 (high)
->
-> ----------- REVIEW -----------
-> This is the kind of talk that I look forward to hearing.  A talk on
-> practical usage of C++ in dirty real world applications, and
-> battle.net sounds about as dirty as they get.
->
-> Large-scale deployment, heavy client scale-up and testing are issues I
-> face daily and I hope to learn something from this talk because right
-> now the state of the art in the C++ world is far from perfect.
->
->
-> ----------------------- REVIEW 4 ---------------------
-> PAPER: 3
-> TITLE: Testing Battle.net (before deploying to millions of players)
-> AUTHORS: Ben Deane
->
-> OVERALL EVALUATION: 2 (accept)
-> REVIEWER'S CONFIDENCE: 4 (high)
->
-> ----------- REVIEW -----------
-> Testing a large scale distributed system will be very tricky. Testing
-> code for correctness, performance and scalability without having to
-> deploy a full-scale environment and spin up a million clients? I'm in!
->
->
-> ----------------------- REVIEW 5 ---------------------
-> PAPER: 3
-> TITLE: Testing Battle.net (before deploying to millions of players)
-> AUTHORS: Ben Deane
->
-> OVERALL EVALUATION: 0 (borderline paper) REVIEWER'S CONFIDENCE: 4
-> (high)
->
-> ----------- REVIEW -----------
-> Even though testing is a large percentage of development costs and
-> testing across network is even more difficult, the question remains
-> what is necessary to modify in C++ that would make this task more
-> efficient? Is there a thread running in the background to monitor
-> performance or any issues that may arise during execution?
->
-> If these questions can be answered, then let the presentation be given.
->
->
-> ----------------------- REVIEW 6 ---------------------
-> PAPER: 3
-> TITLE: Testing Battle.net (before deploying to millions of players)
-> AUTHORS: Ben Deane
->
-> OVERALL EVALUATION: 2 (accept)
-> REVIEWER'S CONFIDENCE: 3 (medium)
->
-> ----------- REVIEW -----------
-> Scalability adds a new dimension to the world of testing.  Given the
-> author's experience at Blizzard, I believe he will provide unique
-> insight into building confidence in systems that get deployed to millions of simultaneous users.
->
-> Given the push towards value semantics (type erasure vs. exposed class
-> hierarchies), I would like to see the author address how to make those
-> things testable as well, (hopefully) without adding complexity or run
-> time cost to the production codebase.
->
