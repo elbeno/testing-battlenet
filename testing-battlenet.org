@@ -1,19 +1,22 @@
 # (setq org-export-allow-bind-keywords t)
 #+BIND: org-latex-title-command "\\author[Ben Deane]{\\href{mailto:bdeane@blizzard.com}{Ben Deane} \\\\ {\\scriptsize{Principal Engineer, \\href{http://www.blizzard.com/}{Blizzard Entertainment}}} \\\\ {\\footnotesize{\\texttt{\\href{mailto:bdeane@blizzard.com}{bdeane@blizzard.com}, \\href{http://www.twitter.com/ben_deane}{@ben_deane}}}}}\n\\maketitle"
 
-#+TITLE: Testing Battle.net
+#+TITLE: \textnormal{Testing Battle.net}
 #+BEAMER_HEADER: \subtitle{(Before deploying to millions of players)}
-#+DATE: 12th May 2015
-#+AUTHOR: Ben Deane
+#+DATE: \textnormal{24th September 2015}
+# +AUTHOR: Ben Deane
 
-#+DESCRIPTION: C++-oriented solutions to testing Battle.net before deployment
-#+KEYWORDS: battle.net testing c++
+# +DESCRIPTION: C++-oriented solutions to testing Battle.net before deployment
+# +KEYWORDS: battle.net testing c++
 #+LANGUAGE:  en
 #+OPTIONS:   H:2 num:t toc:t \n:nil @:t ::t |:t ^:nil -:t f:t *:t <:t author:nil
 #+OPTIONS:   TeX:t LaTeX:t skip:nil d:nil todo:t pri:nil tags:not-in-toc
 #+INFOJS_OPT: view:nil toc:nil ltoc:t mouse:underline buttons:0 path:http://orgmode.org/org-info.js
 #+EXPORT_SELECT_TAGS: export
 #+EXPORT_EXCLUDE_TAGS: noexport
+#+SELECT_TAGS: export
+#+EXCLUDE_TAGS: noexport
+#+CREATOR: Emacs 25.0.50.2 (Org mode 8.3.1)
 #+LINK_UP:
 #+LINK_HOME:
 #+XSLT:
@@ -891,7 +894,8 @@ public:\\
 ** Testable classes
 \begin{center}
 Dependency injection is probably the biggest factor affecting whether or not code \emph{is testable at all}.\\[2\baselineskip]
-Even with DI, classes are \emph{onerous to test} unless constructors take few arguments, using narrow interfaces.
+Even with DI, classes are \emph{onerous to test} unless constructors take few arguments, using narrow interfaces.\\[2\baselineskip]
+Corollary: construct with sensibly-configured defaults.
 \end{center}
 
 *** notes                                                        :B_noteNH:
@@ -1065,7 +1069,7 @@ You can let the test make them...\\[1\baselineskip]
 :END:
 \begin{scriptsize}
 \texttt{const int MULT = 32;\\
-const int N = 32;\\
+const int N = 100;\\
 ...\\
 {\color{sh_comment}\textit{// run 1 - with size N}}\\
 \hilight{auto sampleTime1 = test->Run(N);}\\
@@ -1196,7 +1200,7 @@ struct Arbitrary\\
 \string{\\
 \ \ static T generate(size_t {\color{sh_comment}\textit{/*generation*/}}, unsigned long int {\color{sh_comment}\textit{/*seed*/}})\\
 \ \ \string{\\
-\ \ \ \ return T();\\
+\ \ \ \ return T\string{\string};\\
 \ \ \string}\\
 \string};\\[1\baselineskip]}
 \end{scriptsize}
@@ -1241,7 +1245,7 @@ For \texttt{int}-like types\\[1\baselineskip]
 :BEAMER_act: <1>
 :END:
 \begin{scriptsize}
-\texttt{static int generate(size_t g, unsigned long int seed)\\
+\texttt{static T generate(size_t g, unsigned long int seed)\\
 \string{\\
 \ \ switch (g)\\
 \ \ \string{\\
@@ -1265,7 +1269,7 @@ For \texttt{int}-like types\\[1\baselineskip]
 :BEAMER_act: <2>
 :END:
 \begin{scriptsize}
-\texttt{static int generate(size_t g, unsigned long int seed)\\
+\texttt{static T generate(size_t g, unsigned long int seed)\\
 \string{\\
 \ \ switch (g)\\
 \ \ \string{\\
@@ -1313,14 +1317,15 @@ For compound types (eg \texttt{vector})\\[1\baselineskip]
 \end{center}
 
 \begin{scriptsize}
-\texttt{static vector<T> generate(size_t g, unsigned long int seed)\\
+\texttt{static T generate(size_t g, unsigned long int seed)\\
 \string{\\
-\ \ vector<T> v;\\
+\ \ using ValT = typename T::value_type;\\
+\ \ T v;\\
 \ \ \hilight{size_t n = 10 * ((g / 100) + 1);}\\
 \ \ v.reserve(n);\\
 \ \ std::generate_n(\\
 \ \ \ \ std::back_inserter(v), \hilight{n}, [\&] () \string{\\
-\ \ \ \ \ \ \hilight{return Arbitrary<T>::generate(g, seed++);} \string});\\
+\ \ \ \ \ \ \hilight{return Arbitrary<ValT>::generate(g, seed++);} \string});\\
 \ \ return v;\\
 \string}\\[1\baselineskip]}
 \end{scriptsize}
@@ -1751,7 +1756,7 @@ struct Arbitrary\\
 \string{\\
 \ \ static std::vector<T> shrink(const T\& /*t*/)\\
 \ \ \string{\\
-\ \ \ \ return std::vector<T>();\\
+\ \ \ \ return std::vector<T>\string{\string};\\
 \ \ \string}\\
 \string};\\[1\baselineskip]}
 \end{scriptsize}
@@ -1862,14 +1867,15 @@ Now the computer can generate \(\mathnormal{N}\), \(\mathnormal{kN}\) values\\[1
 :BEAMER_act: <1>
 :END:
 \begin{scriptsize}
-\texttt{static vector<T> \hilight{generate}(size_t g, unsigned long int seed)\\
+\texttt{static T \hilight{generate}(size_t g, unsigned long int seed)\\
 \string{\\
-\ \ vector<T> v;\\
+\ \ using ValT = typename T::value_type;\\
+\ \ T v;\\
 \ \ \hilight{size_t n = 10 * ((g / 100) + 1);}\\
 \ \ v.reserve(n);\\
 \ \ std::generate_n(\\
 \ \ \ \ std::back_inserter(v), \hilight{n}, [\&] () \string{\\
-\ \ \ \ \ \ return \hilight{Arbitrary<T>::generate}(g, seed++); \string});\\
+\ \ \ \ \ \ return \hilight{Arbitrary<ValT>::generate}(g, seed++); \string});\\
 \ \ return v;\\
 \string}\\[1\baselineskip]}
 \end{scriptsize}
@@ -1880,14 +1886,15 @@ Now the computer can generate \(\mathnormal{N}\), \(\mathnormal{kN}\) values\\[1
 :BEAMER_act: <2>
 :END:
 \begin{scriptsize}
-\texttt{static vector<T> \hilight{generate_n}(size_t g, unsigned long int seed)\\
+\texttt{static T \hilight{generate_n}(size_t g, unsigned long int seed)\\
 \string{\\
-\ \ vector<T> v;\\
+\ \ using ValT = typename T::value_type;\\
+\ \ T v;\\
 \ \ {\color{sh_comment}\textit{// use g directly instead of a "loose" value}}\\
 \ \ v.reserve(g);\\
 \ \ std::generate_n(\\
 \ \ \ \ std::back_inserter(v), \hilight{g}, [\&] () \string{\\
-\ \ \ \ \ \ return \hilight{Arbitrary<T>::generate_n}(g, seed++); \string});\\
+\ \ \ \ \ \ return \hilight{Arbitrary<ValT>::generate_n}(g, seed++); \string});\\
 \ \ return v;\\
 \string}\\[1\baselineskip]}
 \end{scriptsize}
@@ -1944,7 +1951,10 @@ Much less boilerplate to maintain
   - for ranges
   - unfortunately c++ has no newtype
 
-** Demo #3
+** Demo #3                                                          :B_note:
+:PROPERTIES:
+:BEAMER_env: note
+:END:
 \begin{center}
 (Demo)
 \end{center}
@@ -2430,7 +2440,7 @@ Status quo/future possibilities.\\[2\baselineskip]
 - in practice, the efficiency bar for Battle.net efficiency is < O(n)
 
 ** The future?
-- \texttt{Arbitrary} opens the door for fuzz testing?
+- \texttt{Arbitrary} is a kind of lightweight fuzz testing?
 - Alternative walk strategies through the input space
   - Hilbert
   - Morton
@@ -2449,7 +2459,10 @@ Status quo/future possibilities.\\[2\baselineskip]
   - Make tests do bad things
   - Make Arbitrary generation give bad data
 
-** Battle.net is still highly...
+** Battle.net is still highly...                                    :B_note:
+:PROPERTIES:
+:BEAMER_env: note
+:END:
 - Distributed
 - Asynchronous
 - Configured
@@ -2476,16 +2489,16 @@ Me: \texttt{\href{mailto:bdeane@blizzard.com}{bdeane@blizzard.com}, \href{http:/
 \addtocounter{framenumber}{-1}
 
 ** Epilogue: more on properties
-\begin{center}
-Cool, can you do multiple arguments?\\[1\baselineskip]
-\hrule
-\end{center}
 
 *** only                                                        :B_onlyenv:
 :PROPERTIES:
 :BEAMER_env: onlyenv
 :BEAMER_act: <1>
 :END:
+\begin{center}
+People see this, and say...\\[1\baselineskip]
+\hrule
+\end{center}
 \begin{scriptsize}
 \texttt{DEF_PROPERTY(TestName, Suite, \hilight{const string\& s})\\
 \string{\\
@@ -2501,6 +2514,10 @@ Cool, can you do multiple arguments?\\[1\baselineskip]
 :BEAMER_env: onlyenv
 :BEAMER_act: <2>
 :END:
+\begin{center}
+Cool, can you do multiple arguments?\\[1\baselineskip]
+\hrule
+\end{center}
 \begin{scriptsize}
 \texttt{DEF_PROPERTY(TestName, Suite, \hilight{const string\& s, int i})\\
 \string{\\
@@ -2572,12 +2589,12 @@ struct function_traits<R(A...)>\\
 \ \ \hilight{using argTuple = std::tuple<std::decay_t<A>...>;}\\[1\baselineskip]
 \ \ {\color{sh_comment}\textit{// apply a function to a tuple of arguments}}\\
 \ \ template <typename F>\\
-\ \ static R apply(F\& f, const argTuple\& t)\\
+\ \ static R apply(F f, const argTuple\& t)\\
 \ \ \string{\\
 \ \ \ \ return unpackApply(f, t, std::index_sequence_for<A...>());\\
 \ \ \string}\\[1\baselineskip]
 \ \ template <typename F, std::size_t...\ Is>\\
-\ \ static R unpackApply(F\& f, const argTuple\& t, std::index_sequence<Is...>)\\
+\ \ static R unpackApply(F f, const argTuple\& t, std::index_sequence<Is...>)\\
 \ \ \string{\\
 \ \ \ \ return f(std::get<Is>(t)...);\\
 \ \ \string}\\
@@ -2597,12 +2614,12 @@ struct function_traits<R(A...)>\\
 \ \ using argTuple = std::tuple<std::decay_t<A>...>;\\[1\baselineskip]
 \ \ {\color{sh_comment}\textit{// apply a function to a tuple of arguments}}\\
 \ \ template <typename F>\\
-\ \ static R apply(F\& f, const argTuple\& t)\\
+\ \ static R apply(F f, const argTuple\& t)\\
 \ \ \string{\\
 \ \ \ \ return unpackApply(f, t, \hilight{std::index_sequence_for<A...>()});\\
 \ \ \string}\\[1\baselineskip]
 \ \ template <typename F, std::size_t...\ Is>\\
-\ \ static R unpackApply(F\& f, const argTuple\& t, std::index_sequence<Is...>)\\
+\ \ static R unpackApply(F f, const argTuple\& t, std::index_sequence<Is...>)\\
 \ \ \string{\\
 \ \ \ \ return \hilight{f(std::get<Is>(t)...)};\\
 \ \ \string}\\
@@ -2653,18 +2670,18 @@ struct function_traits<R(A...)>\\
 \begin{scriptsize}
 \texttt{static std::vector<std::pair<T1, T2>{}> shrink(const std::pair<T1, T2>\& p)\\
 \string{\\
-\ \ std::vector<std::pair<T1, T2>{}> ret\string{\string};\\[1\baselineskip]
+\ \ std::vector<std::pair<T1, T2>{}> ret;\\[1\baselineskip]
 \ \ {\color{sh_comment}\textit{// shrink the first}}\\
 \ \ auto first_v = \hilight{Arbitrary<T1>::shrink(p.first)};\\
-\ \ for (T1\& e :\ first_v)\\
+\ \ for (auto\&\& e :\ first_v)\\
 \ \ \string{\\
-\ \ \ \ ret.push_back(\hilight{std::make_pair(std::move(e), p.second)});\\
+\ \ \ \ ret.push_back(\hilight{std::make_pair(e, p.second)});\\
 \ \ \string}\\[1\baselineskip]
 \ \ {\color{sh_comment}\textit{// shrink the second}}\\
 \ \ auto second_v = Arbitrary<T2>::shrink(p.second);\\
-\ \ for (T2\& e :\ second_v)\\
+\ \ for (auto\&\& e :\ second_v)\\
 \ \ \string{\\
-\ \ \ \ ret.push_back(std::make_pair(p.first, std::move(e)));\\
+\ \ \ \ ret.push_back(std::make_pair(p.first, e));\\
 \ \ \string}\\[1\baselineskip]
 \ \ return ret;\\
 \string}\\[1\baselineskip]}
@@ -2678,18 +2695,18 @@ struct function_traits<R(A...)>\\
 \begin{scriptsize}
 \texttt{static std::vector<std::pair<T1, T2>{}> shrink(const std::pair<T1, T2>\& p)\\
 \string{\\
-\ \ std::vector<std::pair<T1, T2>{}> ret\string{\string};\\[1\baselineskip]
+\ \ std::vector<std::pair<T1, T2>{}> ret;\\[1\baselineskip]
 \ \ {\color{sh_comment}\textit{// shrink the first}}\\
 \ \ auto first_v = Arbitrary<T1>::shrink(p.first);\\
-\ \ for (T1\& e :\ first_v)\\
+\ \ for (auto\&\& e :\ first_v)\\
 \ \ \string{\\
-\ \ \ \ ret.push_back(std::make_pair(std::move(e), p.second));\\
+\ \ \ \ ret.push_back(std::make_pair(e, p.second));\\
 \ \ \string}\\[1\baselineskip]
 \ \ {\color{sh_comment}\textit{// shrink the second}}\\
 \ \ auto second_v = \hilight{Arbitrary<T2>::shrink(p.second)};\\
-\ \ for (T2\& e :\ second_v)\\
+\ \ for (auto\&\& e :\ second_v)\\
 \ \ \string{\\
-\ \ \ \ ret.push_back(\hilight{std::make_pair(p.first, std::move(e))});\\
+\ \ \ \ ret.push_back(\hilight{std::make_pair(p.first, e)});\\
 \ \ \string}\\[1\baselineskip]
 \ \ return ret;\\
 \string}\\[1\baselineskip]}
@@ -2761,13 +2778,13 @@ ghci> [(\(x,y) -> (1,y)), (\(x,y) -> (2,y))] <*> [(0,4),(0,5),(0,6)]
 \begin{scriptsize}
 \texttt{static std::vector<std::tuple<Ts...>{}> shrink(const std::tuple<Ts...>\& t)\\
 \string{\\
-\ \ std::vector<std::tuple<Ts...>{}> ret\string{\string};\\[1\baselineskip]
+\ \ std::vector<std::tuple<Ts...>{}> ret;\\[1\baselineskip]
 \ \ {\color{sh_comment}\textit{// shrink the head}}\\
 \ \ using H = std::decay_t<decltype(std::get<0>(t))>;\\
 \ \ auto head_v = Arbitrary<H>::shrink(\hilight{std::get<0>(t)});\\
-\ \ for (H\& e :\ head_v)\\
+\ \ for (auto\&\& e :\ head_v)\\
 \ \ \string{\\
-\ \ \ \ ret.push_back(\hilight{tuple_cons(std::move(e), tuple_tail(t))});\\
+\ \ \ \ ret.push_back(\hilight{tuple_cons(e, tuple_tail(t))});\\
 \ \ \string}\\[1\baselineskip]
 \ \ ...\\[1\baselineskip]
 \ \ return ret;\\
@@ -2782,14 +2799,14 @@ ghci> [(\(x,y) -> (1,y)), (\(x,y) -> (2,y))] <*> [(0,4),(0,5),(0,6)]
 \begin{scriptsize}
 \texttt{static std::vector<std::tuple<Ts...>{}> shrink(const std::tuple<Ts...>\& t)\\
 \string{\\
-\ \ std::vector<std::tuple<Ts...>{}> ret\string{\string};\\[1\baselineskip]
+\ \ std::vector<std::tuple<Ts...>{}> ret;\\[1\baselineskip]
 \ \ ...\\[1\baselineskip]
 \ \ {\color{sh_comment}\textit{// shrink the tail recursively}}\\
 \ \ using T = std::decay_t<decltype(tuple_tail(t))>;\\
 \ \ auto tail_v = Arbitrary<T>::shrink(\hilight{tuple_tail(t)});\\
-\ \ for (T\& e :\ tail_v)\\
+\ \ for (auto\&\& e :\ tail_v)\\
 \ \ \string{\\
-\ \ \ \ ret.push_back(\hilight{tuple_cons(std::get<0>(t), std::move(e))});\\
+\ \ \ \ ret.push_back(\hilight{tuple_cons(std::get<0>(t), e)});\\
 \ \ \string}\\[1\baselineskip]
 \ \ return ret;\\
 \string}\\[1\baselineskip]}
